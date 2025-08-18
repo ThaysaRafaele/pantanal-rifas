@@ -192,3 +192,180 @@ body {
 .social-icons a:hover {
   color: #ffcc00;
 }
+
+/* Definições de glass-login e form-container removidas - agora usando sistema modular */
+
+.form-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+  color: #ddd;
+}
+
+.form-control,
+.form-select {
+  width: 100%;
+  padding: 10px 15px;
+  border-radius: 10px;
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #00ff80;
+  box-shadow: 0 0 5px #00ff80;
+}
+
+.btn-dark {
+  background-color: #00c95d;
+  color: #000;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s ease;
+  display: block;
+  width: 100%;
+}
+
+.btn-dark:hover {
+  background-color: #00e676;
+  transform: scale(1.02);
+}
+
+/* Botão Salvar específico */
+#btnSalvar {
+  position: relative;
+  overflow: hidden;
+}
+
+#btnSalvar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Layout específico para sorteios como na imagem */
+.premios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.premios-tabs {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.premios-tabs .tab-item {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: transparent;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.premios-tabs .tab-item:hover {
+  color: #007bff;
+}
+
+.premios-tabs .tab-item.active {
+  background: #17a2b8;
+  color: white;
+}
+
+/* Layout vertical para cards como na imagem */
+.premios-lista-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.premio-card-vertical {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.premio-img-vertical {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.premio-content-vertical {
+  padding: 1.5rem;
+  color: white;
+}
+
+.premio-titulo-vertical {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 0.5rem 0;
+}
+
+.premio-desc-vertical {
+  color: #ccc;
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.premio-footer-vertical {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.premio-badge-vertical {
+  background: #28a745;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-adquirir-vertical {
+  background: #007bff;
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-adquirir-vertical:hover {
+  background: #0056b3;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-indisponivel-vertical {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.badge {
+  padding: 0.4em 0.7em;
+  border-radius: 12px;
+  font-size: 0.75rem;
+}

@@ -1,0 +1,333 @@
+/* Seção de Etapas do Sorteio */
+.etapas-sorteio {
+  padding: 4rem 0;
+  margin-top: 4rem;
+  background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(20,20,20,0.9) 100%);
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.etapas-sorteio::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(57, 255, 20, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(57, 255, 20, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.etapas-sorteio .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.step {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  transition: all var(--transition-bounce);
+  position: relative;
+  overflow: hidden;
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(57, 255, 20, 0.1), transparent);
+  transition: left 0.6s ease;
+}
+
+.step:hover {
+  transform: translateY(-5px);
+  border-color: rgba(57, 255, 20, 0.5);
+  box-shadow: 0 10px 30px rgba(57, 255, 20, 0.2);
+}
+
+.step:hover::before {
+  left: 100%;
+}
+
+.step-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--raffle-title-color), #00c95d);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+  transition: all var(--transition-normal);
+}
+
+.step:hover .step-icon {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.5);
+}
+
+.step-icon i {
+  font-size: 2rem;
+  color: #000;
+  font-weight: bold;
+}
+
+.step h3 {
+  color: var(--raffle-title-color);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+.step p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .etapas-sorteio {
+    padding: 3rem 0;
+    margin-top: 2rem;
+  }
+  
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .step {
+    padding: 1.5rem;
+  }
+  
+  .step-icon {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .step-icon i {
+    font-size: 1.5rem;
+  }
+  
+  .step h3 {
+    font-size: 1rem;
+  }
+}
+
+/* Animação de contador para os steps */
+.step-number {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  background: var(--raffle-title-color);
+  color: #000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Seção de Estatísticas */
+.stats-section {
+  padding: 4rem 0;
+  margin-top: 4rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: all var(--transition-bounce);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(57, 255, 20, 0.5);
+  box-shadow: 0 10px 30px rgba(57, 255, 20, 0.2);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--raffle-title-color), #00c95d);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
+}
+
+.stat-icon i {
+  font-size: 1.5rem;
+  color: #000;
+  font-weight: bold;
+}
+
+.stat-number {
+  color: var(--raffle-title-color);
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+.stat-card p {
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+/* Seção de Depoimentos */
+.testimonials-section {
+  padding: 4rem 0;
+  margin-top: 2rem;
+  background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(10,10,10,0.8) 100%);
+  border-radius: var(--radius-xl);
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.testimonial-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  transition: all var(--transition-bounce);
+}
+
+.testimonial-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(57, 255, 20, 0.3);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.testimonial-content {
+  margin-bottom: 1.5rem;
+}
+
+.testimonial-content p {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.6;
+  position: relative;
+}
+
+.testimonial-content p::before {
+  content: '"';
+  color: var(--raffle-title-color);
+  font-size: 3rem;
+  position: absolute;
+  top: -10px;
+  left: -20px;
+  opacity: 0.3;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.author-avatar {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, var(--raffle-title-color), #00c95d);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.author-avatar i {
+  color: #000;
+  font-size: 1.2rem;
+}
+
+.author-info h4 {
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.author-info span {
+  color: var(--raffle-title-color);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Responsivo para as novas seções */
+@media (max-width: 768px) {
+  .stats-section,
+  .testimonials-section {
+    padding: 3rem 0;
+    margin-top: 2rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .stat-number {
+    font-size: 2rem;
+  }
+  
+  .testimonial-card {
+    padding: 1.5rem;
+  }
+}

@@ -3,8 +3,21 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>{% block title %}Rifa Online{% endblock %}</title>
-  <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+  <title>{% block title %}Pantanal da Sorte{% endblock %}</title>
+  
+  <!-- Favicons completos -->
+  <link rel="icon" href="{% static 'img/favicon/favicon.ico' %}" type="image/x-icon">
+  <link rel="shortcut icon" href="{% static 'img/favicon/favicon.ico' %}" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon/favicon-16x16.png' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon/favicon-32x32.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/favicon/apple-touch-icon.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/favicon/android-chrome-192x192.png' %}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/favicon/android-chrome-512x512.png' %}">
+  
+  <!-- Meta tags para PWA (opcional) -->
+  <meta name="theme-color" content="#ffd700">
+  <meta name="msapplication-TileColor" content="#000000">
+  <meta name="msapplication-TileImage" content="{% static 'img/favicon/android-chrome-192x192.png' %}">
 
   <!-- Fonts e ícones -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
@@ -16,15 +29,29 @@
   <!-- AOS (Animações ao rolar) -->
   <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
 
-  <!-- Estilo próprio -->
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <!-- CSS modularizado -->
+  <link rel="stylesheet" href="{% static 'css/base/variables.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base/reset.css' %}">
+  <link rel="stylesheet" href="{% static 'css/layout/layout.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/glass.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/cards.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/utilities.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/animations.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/text-overrides.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/steps.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/gold-theme.css' %}">
+  
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
   <!-- Fundo com gradiente -->
   <div class="bg-gradiente"></div>
 
   <header class="navbar-custom">
-    <a href="{% url 'home' %}" class="logo logo-flash">VIPEBOOK</a>
+    <a href="/" class="logo">
+      PANTANAL DA SORTE
+    </a>
     <div class="icons">
       <i id="btn-menu" class="fas fa-bars"></i>
       <i class="fas fa-shopping-cart"></i>
@@ -35,9 +62,9 @@
   <nav id="menu-lateral" class="menu-lateral">
     <ul style="display: flex; flex-direction: column; gap: 10px;">
       <li><a href="{% url 'home' %}">🏠 Início</a></li>
-      <li><a href="{% url 'sorteios' %}">🎟️ Sorteios</a></li>
-      <li><a href="{% url 'meus_numeros' %}">🔢 Meus números</a></li>
-      <li><a href="{% url 'cadastro' %}">📝 Cadastro</a></li>
+      <li><a href="{% url 'sorteios' %}">🐊 Sorteios</a></li>
+      <li><a href="{% url 'meus_numeros' %}">🍀 Meus números</a></li>
+      <li><a href="{% url 'cadastro' %}">🦜 Cadastro</a></li>
       <li><a href="{% url 'ganhadores' %}">🏆 Ganhadores</a></li>
       {% if not user.is_authenticated %}
         <li><a href="{% url 'login' %}" class="btn btn-primary d-flex align-items-center justify-content-center" style="margin-top:10px;"><i class="fas fa-sign-in-alt me-2"></i> Entrar</a></li>

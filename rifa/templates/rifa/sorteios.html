@@ -1,53 +1,1000 @@
 {% extends 'rifa/base.html' %}
+{% load static %}
 
 {% block title %}Sorteios{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/sorteios.css' %}">
+{% endblock %}
+
 {% block content %}
-<section>
-  <div class="container-fluid px-0 d-flex justify-content-center align-items-start" style="min-height: 70vh;">
-    <div class="glass-login w-100" style="max-width: 700px; margin-top: 24px;">
-      <h2 class="mb-3 text-primary" data-aos="fade-down"><i class="fas fa-bolt me-2"></i> Prêmios</h2>
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="fw-bold text-secondary" style="font-size:1.1em;">LISTAR</div>
-        <ul class="nav nav-pills mb-0" data-aos="fade-down" data-aos-delay="150">
-          <li class="nav-item"><a class="nav-link active" href="#">Ativos</a></li>
-          <li class="nav-item"><a class="nav-link" href="#">Concluídos</a></li>
-          <li class="nav-item"><a class="nav-link" href="#">Em breve</a></li>
-        </ul>
-        <a href="#" class="btn btn-primary"><i class="fas fa-search"></i> Buscar</a>
-      </div>
-      <div class="premios-lista mt-2">
-        {% for rifa in rifas %}
-        <div class="premio-card d-flex align-items-center mb-3 p-2 bg-white rounded-4 shadow-sm" style="gap: 16px; min-height: 100px;">
-          <div style="flex-shrink:0;">
-            {% if rifa.imagem %}
-              <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 12px;">
-            {% else %}
-              <img src="https://via.placeholder.com/70x70?text=Sem+Imagem" alt="Sem imagem" style="width: 70px; height: 70px; object-fit: cover; border-radius: 12px;">
-            {% endif %}
-          </div>
-          <div class="flex-grow-1">
-            <div class="fw-bold" style="font-size:1.1em;">{{ rifa.titulo }}</div>
-            <div class="text-muted small">{{ rifa.descricao|truncatewords:8 }}</div>
-            {% if not rifa.encerrada %}
-              <span class="badge bg-success mt-1">Adquira já!</span>
-            {% else %}
-              <span class="badge bg-secondary mt-1">Encerrado</span>
-            {% endif %}
-          </div>
-          <div style="min-width:120px; text-align:right;">
-            {% if rifa.encerrada %}
-              <button class="btn btn-secondary btn-sm w-100" disabled>Indisponível</button>
-            {% else %}
-              <a href="{% url 'sorteio_detail' rifa.id %}" class="btn btn-primary btn-sm w-100">Adquirir</a>
-            {% endif %}
+<section class="sorteios-section">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8 col-xl-6">
+        
+        <!-- Header Principal -->
+        <div class="sorteios-header-premium">
+          <div class="header-content">
+            <div class="title-section">
+              <div class="icon-container">
+                <i class="fas fa-trophy"></i>
+              </div>
+              <div class="title-text">
+                <h1>Prêmios</h1>
+                <p>Participe dos nossos sorteios e concorra a prêmios incríveis</p>
+              </div>
+            </div>
+            
+            <div class="header-actions">
+              {% if user.is_staff or user.is_superuser %}
+              <button class="btn-add-rifa" type="button" data-bs-toggle="modal" data-bs-target="#addRifaModal">
+                <i class="fas fa-plus"></i>
+                <span>Nova Rifa</span>
+              </button>
+              {% endif %}
+              <button class="btn-search-premium" type="button" data-bs-toggle="modal" data-bs-target="#searchModal">
+                <i class="fas fa-search"></i>
+                <span>Buscar</span>
+              </button>
+            </div>
           </div>
         </div>
-        {% empty %}
-        <div class="alert alert-warning text-center">Nenhum sorteio disponível no momento.</div>
-        {% endfor %}
+
+        <!-- Filtros Premium -->
+        <div class="filter-tabs-premium">
+          <div class="tabs-container">
+            <button class="tab-btn active" data-filter="ativos">
+              <i class="fas fa-play-circle"></i>
+              <span>Ativos</span>
+              <div class="tab-indicator"></div>
+            </button>
+            <button class="tab-btn" data-filter="concluidos">
+              <i class="fas fa-check-circle"></i>
+              <span>Concluídos</span>
+              <div class="tab-indicator"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cards de Rifas Premium -->
+        <div class="rifas-grid">
+          {% for rifa in rifas %}
+          <div class="rifa-card-premium {% if rifa.encerrada %}encerrada{% endif %}" data-status="{% if rifa.encerrada %}encerrada{% else %}ativa{% endif %}">
+            
+            <!-- Botões de Administração (apenas para admins) -->
+            {% if user.is_staff or user.is_superuser %}
+            <div class="admin-controls">
+              <button class="btn-admin-edit" onclick="editarRifa({{ rifa.id }})" title="Editar Rifa">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-admin-delete" onclick="confirmarExclusao({{ rifa.id }}, '{{ rifa.titulo }}')" title="Excluir Rifa">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+            {% endif %}
+            
+            <a href="{% url 'sorteio_detail' rifa.id %}" class="card-link">
+              
+              <!-- Imagem com overlay -->
+              <div class="card-image-container">
+                {% if rifa.imagem %}
+                  <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="card-image">
+                {% else %}
+                  <div class="placeholder-image">
+                    <i class="fas fa-gift"></i>
+                  </div>
+                {% endif %}
+                
+                <!-- Status Badge -->
+                <div class="status-badge {% if rifa.encerrada %}encerrado{% else %}ativo{% endif %}">
+                  {% if not rifa.encerrada %}
+                    <i class="fas fa-fire"></i> Ativo
+                  {% else %}
+                    <i class="fas fa-trophy"></i> Finalizado
+                  {% endif %}
+                </div>
+                
+                <!-- Selo de Ganhador (apenas para rifas encerradas) -->
+                {% if rifa.encerrada and rifa.ganhador_nome %}
+                <div class="winner-seal">
+                  <i class="fas fa-crown"></i>
+                  <span>Sorteado</span>
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Conteúdo do Card -->
+              <div class="card-content">
+                <div class="card-header">
+                  <h3 class="card-title">{{ rifa.titulo }}</h3>
+                  <div class="card-price">
+                    R$ {{ rifa.preco|floatformat:2 }}
+                  </div>
+                </div>
+                
+                <p class="card-description">
+                  {{ rifa.descricao|default:"Concorra a este prêmio incrível!"|truncatechars:80 }}
+                </p>
+
+                <!-- Informações adicionais -->
+                <div class="card-info">
+                  <div class="info-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>{{ rifa.quantidade_numeros }} números</span>
+                  </div>
+                  {% if rifa.data_encerramento %}
+                  <div class="info-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ rifa.data_encerramento|date:"d/m/Y" }}</span>
+                  </div>
+                  {% endif %}
+                  
+                  <!-- Informações do ganhador (apenas para rifas encerradas) -->
+                  {% if rifa.encerrada and rifa.ganhador_nome %}
+                  <div class="info-item winner-info">
+                    <i class="fas fa-user-crown"></i>
+                    <span>Ganhador: {{ rifa.ganhador_nome }}</span>
+                  </div>
+                  {% if rifa.ganhador_numero %}
+                  <div class="info-item winner-info">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Número: {{ rifa.ganhador_numero }}</span>
+                  </div>
+                  {% endif %}
+                  {% endif %}
+                </div>
+
+                <!-- Botão de ação -->
+                <div class="card-action">
+                  {% if not rifa.encerrada %}
+                    <button class="btn-participate">
+                      <i class="fas fa-bolt"></i>
+                      <span>Participar Agora</span>
+                    </button>
+                  {% else %}
+                    <button class="btn-view-result">
+                      <i class="fas fa-trophy"></i>
+                      <span>Ver Ganhador</span>
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
+            </a>
+          </div>
+          {% empty %}
+          <div class="empty-state" id="emptyStateGeneral">
+            <div class="empty-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <h3>Nenhum sorteio encontrado</h3>
+            <p>No momento não há sorteios disponíveis nesta categoria.</p>
+          </div>
+          {% endfor %}
+          
+          <!-- Estado especial para "Nenhum Prêmio Concluído" -->
+          <div class="empty-state-concluded" id="emptyStateConcluded" style="display: none;">
+            <div class="concluded-illustration">
+              <div class="trophy-container">
+                <i class="fas fa-trophy"></i>
+                <div class="trophy-shine"></div>
+              </div>
+            </div>
+            <h3>Nenhum Prêmio Concluído</h3>
+            <p>Quando houver sorteios finalizados, eles aparecerão aqui com os resultados e ganhadores.</p>
+            <div class="concluded-features">
+              <div class="feature-item">
+                <i class="fas fa-crown"></i>
+                <span>Ganhadores oficiais</span>
+              </div>
+              <div class="feature-item">
+                <i class="fas fa-calendar-check"></i>
+                <span>Datas de sorteio</span>
+              </div>
+              <div class="feature-item">
+                <i class="fas fa-certificate"></i>
+                <span>Resultados verificados</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rodapé informativo -->
+        <div class="sorteios-footer">
+          <p><i class="fas fa-shield-alt"></i> Todos os sorteios são regulamentados e seguros</p>
+        </div>
+
       </div>
     </div>
   </div>
 </section>
+
+<!-- Modal de Busca -->
+<div class="modal fade" id="searchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Buscar Sorteios</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="Digite o nome do prêmio...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Adicionar Nova Rifa -->
+{% if user.is_staff or user.is_superuser %}
+<div class="modal fade" id="addRifaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="fas fa-plus-circle text-warning me-2"></i>
+          Adicionar Nova Rifa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{% url 'criar_rifa' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="titulo" class="form-label">Título da Rifa</label>
+                <input type="text" class="form-control bg-dark text-light border-secondary" 
+                       id="titulo" name="titulo" required placeholder="Ex: iPhone 15 Pro Max">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="preco" class="form-label">Preço por Número</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-secondary text-light border-secondary">R$</span>
+                  <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary" 
+                         id="preco" name="preco" required placeholder="5.00">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="quantidade_numeros" class="form-label">Quantidade de Números</label>
+                <input type="number" class="form-control bg-dark text-light border-secondary" 
+                       id="quantidade_numeros" name="quantidade_numeros" required placeholder="1000">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="data_encerramento" class="form-label">Data de Encerramento</label>
+                <input type="datetime-local" class="form-control bg-dark text-light border-secondary" 
+                       id="data_encerramento" name="data_encerramento">
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea class="form-control bg-dark text-light border-secondary" 
+                      id="descricao" name="descricao" rows="3" 
+                      placeholder="Descreva o prêmio e as regras da rifa..."></textarea>
+          </div>
+          
+          <div class="mb-3">
+            <label for="imagem" class="form-label">Imagem do Prêmio</label>
+            <input type="file" class="form-control bg-dark text-light border-secondary" 
+                   id="imagem" name="imagem" accept="image/*">
+            <div class="form-text text-muted">Formatos aceitos: JPG, PNG, WebP (máx: 5MB)</div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="encerrada" name="encerrada">
+                <label class="form-check-label" for="encerrada">
+                  Rifa já encerrada
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="ativa" name="ativa" checked>
+                <label class="form-check-label" for="ativa">
+                  Rifa ativa (visível no site)
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-save me-2"></i>Criar Rifa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal Editar Rifa -->
+{% if user.is_staff or user.is_superuser %}
+<div class="modal fade" id="editRifaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="fas fa-edit text-warning me-2"></i>
+          Editar Rifa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editRifaForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="edit_titulo" class="form-label">Título da Rifa</label>
+                <input type="text" class="form-control bg-dark text-light border-secondary" 
+                       id="edit_titulo" name="titulo" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="edit_preco" class="form-label">Preço por Número</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-secondary text-light border-secondary">R$</span>
+                  <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary" 
+                         id="edit_preco" name="preco" required>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="edit_quantidade_numeros" class="form-label">Quantidade de Números</label>
+                <input type="number" class="form-control bg-dark text-light border-secondary" 
+                       id="edit_quantidade_numeros" name="quantidade_numeros" required readonly>
+                <div class="form-text text-muted">Não é possível alterar após criação</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="edit_data_encerramento" class="form-label">Data de Encerramento</label>
+                <input type="datetime-local" class="form-control bg-dark text-light border-secondary" 
+                       id="edit_data_encerramento" name="data_encerramento">
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="edit_descricao" class="form-label">Descrição</label>
+            <textarea class="form-control bg-dark text-light border-secondary" 
+                      id="edit_descricao" name="descricao" rows="3"></textarea>
+          </div>
+          
+          <div class="mb-3">
+            <label for="edit_imagem" class="form-label">Nova Imagem do Prêmio (opcional)</label>
+            <input type="file" class="form-control bg-dark text-light border-secondary" 
+                   id="edit_imagem" name="imagem" accept="image/*">
+            <div class="form-text text-muted">Deixe vazio para manter a imagem atual</div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </button>
+          
+          <!-- Botão de Sortear (apenas para rifas ativas) -->
+          <button type="button" class="btn btn-success me-2" id="btnSortearRifa" style="display: none;" 
+                  onclick="confirmarSorteio()">
+            <i class="fas fa-trophy me-2"></i>Sortear Rifa
+          </button>
+          
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-save me-2"></i>Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Exclusão -->
+<div class="modal fade" id="deleteRifaModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+          Confirmar Exclusão
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir a rifa:</p>
+        <p class="fw-bold text-warning" id="rifaToDelete"></p>
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Atenção:</strong> Esta ação não pode ser desfeita. Todos os números e dados relacionados serão perdidos permanentemente.
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+          <i class="fas fa-trash me-2"></i>Excluir Definitivamente
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Sorteio -->
+{% if user.is_staff or user.is_superuser %}
+<div class="modal fade" id="sortearRifaModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">
+          <i class="fas fa-trophy text-warning me-2"></i>
+          Sortear Rifa
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-4">
+          <div class="sorteio-animation" style="display: none;">
+            <div class="spinner-border text-warning" role="status">
+              <span class="visually-hidden">Sorteando...</span>
+            </div>
+            <p class="mt-3">🎲 Sorteando...</p>
+          </div>
+          
+          <div class="sorteio-info" id="sorteioInfo">
+            <p>Tem certeza que deseja sortear a rifa:</p>
+            <p class="fw-bold text-warning" id="rifaToSortear"></p>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Como funciona:</strong> O sistema irá sortear automaticamente entre todos os números já vendidos desta rifa.
+            </div>
+            <div class="sorteio-stats" id="sorteioStats">
+              <!-- Estatísticas serão carregadas aqui -->
+            </div>
+          </div>
+          
+          <div class="sorteio-result" id="sorteioResult" style="display: none;">
+            <div class="winner-announcement">
+              <i class="fas fa-crown text-warning" style="font-size: 3rem;"></i>
+              <h4 class="text-warning mt-3">🎉 Temos um Ganhador! 🎉</h4>
+              <div class="winner-details mt-3">
+                <p><strong>Número Sorteado:</strong> <span class="text-warning fs-4" id="numeroSorteado"></span></p>
+                <p><strong>Ganhador:</strong> <span class="text-warning" id="nomeGanhador"></span></p>
+                <p><strong>CPF:</strong> <span class="text-warning" id="cpfGanhador"></span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btnCancelarSorteio">
+          <i class="fas fa-times me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-success" id="btnConfirmarSorteio">
+          <i class="fas fa-dice me-2"></i>Confirmar Sorteio
+        </button>
+        <button type="button" class="btn btn-primary" id="btnFecharSorteio" style="display: none;">
+          <i class="fas fa-check me-2"></i>Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+<script>
+// Funcionalidade dos filtros
+document.addEventListener('DOMContentLoaded', function() {
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const rifaCards = document.querySelectorAll('.rifa-card-premium');
+  
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      // Remove active de todos os botões
+      tabBtns.forEach(b => b.classList.remove('active'));
+      // Adiciona active ao botão clicado
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      
+      // Filtra os cards
+      rifaCards.forEach(card => {
+        if (filter === 'ativos') {
+          if (card.classList.contains('encerrada')) {
+            card.style.display = 'none';
+          } else {
+            card.style.display = 'block';
+          }
+        } else if (filter === 'concluidos') {
+          if (card.classList.contains('encerrada')) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+    });
+  });
+  
+  // Animação de entrada dos cards
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, index) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }, index * 100);
+      }
+    });
+  }, { threshold: 0.1 });
+  
+  rifaCards.forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(card);
+  });
+});
+
+// Funções para administração de rifas
+let rifaToEdit = null;
+let rifaToDelete = null;
+let rifaParaSortear = null; // Variável para sorteio
+let isProcessing = false; // Prevenir múltiplas submissões
+
+// === FUNÇÕES DE SORTEIO ===
+
+// Função para confirmar sorteio
+function confirmarSorteio() {
+  if (!rifaParaSortear) return;
+  
+  // Carregar estatísticas da rifa
+  fetch(`/api/rifa/${rifaParaSortear}/`)
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('rifaToSortear').textContent = data.titulo;
+      
+      // Mostrar estatísticas
+      const statsHtml = `
+        <div class="row text-center">
+          <div class="col-6">
+            <div class="stat-item">
+              <div class="stat-number text-warning">${data.numeros_vendidos || 0}</div>
+              <div class="stat-label">Números Vendidos</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-item">
+              <div class="stat-number text-info">${data.quantidade_numeros}</div>
+              <div class="stat-label">Total de Números</div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('sorteioStats').innerHTML = statsHtml;
+      
+      // Verificar se há números vendidos
+      if (data.numeros_vendidos === 0) {
+        document.getElementById('sorteioInfo').innerHTML = `
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Não é possível sortear:</strong> Esta rifa não possui números vendidos ainda.
+          </div>
+        `;
+        document.getElementById('btnConfirmarSorteio').style.display = 'none';
+      } else {
+        document.getElementById('btnConfirmarSorteio').style.display = 'inline-block';
+      }
+      
+      // Mostrar modal
+      new bootstrap.Modal(document.getElementById('sortearRifaModal')).show();
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      showNotification('Erro ao carregar dados da rifa', 'error');
+    });
+}
+
+// Função para executar o sorteio
+function executarSorteio() {
+  // Mostrar animação
+  document.querySelector('.sorteio-info').style.display = 'none';
+  document.querySelector('.sorteio-animation').style.display = 'block';
+  document.getElementById('btnConfirmarSorteio').style.display = 'none';
+  document.getElementById('btnCancelarSorteio').style.display = 'none';
+  
+  // Simular delay do sorteio para suspense
+  setTimeout(() => {
+    // Fazer a requisição do sorteio
+    fetch(`/sortear-rifa/${rifaParaSortear}/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Esconder animação
+        document.querySelector('.sorteio-animation').style.display = 'none';
+        
+        // Mostrar resultado
+        document.getElementById('numeroSorteado').textContent = data.numero_sorteado;
+        document.getElementById('nomeGanhador').textContent = data.nome_ganhador;
+        document.getElementById('cpfGanhador').textContent = data.cpf_ganhador;
+        document.getElementById('sorteioResult').style.display = 'block';
+        document.getElementById('btnFecharSorteio').style.display = 'inline-block';
+        
+      } else {
+        document.querySelector('.sorteio-animation').style.display = 'none';
+        document.querySelector('.sorteio-info').style.display = 'block';
+        document.getElementById('btnConfirmarSorteio').style.display = 'inline-block';
+        document.getElementById('btnCancelarSorteio').style.display = 'inline-block';
+        
+        showNotification(data.message || 'Erro ao realizar sorteio', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      document.querySelector('.sorteio-animation').style.display = 'none';
+      document.querySelector('.sorteio-info').style.display = 'block';
+      document.getElementById('btnConfirmarSorteio').style.display = 'inline-block';
+      document.getElementById('btnCancelarSorteio').style.display = 'inline-block';
+      
+      showNotification('Erro ao realizar sorteio', 'error');
+    });
+  }, 2000); // 2 segundos de suspense
+}
+
+// === FUNÇÕES DE ADMINISTRAÇÃO ===
+
+function editarRifa(rifaId) {
+  if (isProcessing) return;
+  
+  // Desabilitar todos os botões de admin temporariamente
+  setAdminButtonsState(false);
+  
+  // Buscar dados da rifa via AJAX
+  fetch(`/api/rifa/${rifaId}/`)
+    .then(response => response.json())
+    .then(data => {
+      // Reabilitar botões
+      setAdminButtonsState(true);
+      
+      // Preencher o formulário de edição
+      document.getElementById('edit_titulo').value = data.titulo || '';
+      document.getElementById('edit_preco').value = data.preco || '';
+      document.getElementById('edit_quantidade_numeros').value = data.quantidade_numeros || '';
+      document.getElementById('edit_descricao').value = data.descricao || '';
+      
+      // Data de encerramento
+      if (data.data_encerramento) {
+        const date = new Date(data.data_encerramento);
+        const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        document.getElementById('edit_data_encerramento').value = localDate.toISOString().slice(0, 16);
+      } else {
+        document.getElementById('edit_data_encerramento').value = '';
+      }
+      
+      // Controlar botão de sortear
+      const btnSortear = document.getElementById('btnSortearRifa');
+      console.log('Dados da rifa:', data); // Debug
+      console.log('Botão sortear encontrado:', btnSortear); // Debug
+      
+      if (btnSortear) {
+        console.log('Encerrada:', data.encerrada, 'Números vendidos:', data.numeros_vendidos); // Debug
+        if (!data.encerrada) {
+          // Mostrar botão para rifas ativas (para teste, vamos sempre mostrar)
+          btnSortear.style.display = 'inline-block';
+          rifaParaSortear = rifaId; // Definir rifa para sorteio
+          console.log('Botão sortear exibido'); // Debug
+        } else {
+          btnSortear.style.display = 'none';
+          console.log('Botão sortear oculto - Rifa encerrada'); // Debug
+        }
+      }
+      
+      // Configurar action do formulário
+      document.getElementById('editRifaForm').action = `/editar-rifa/${rifaId}/`;
+      rifaToEdit = rifaId;
+      
+      // Mostrar modal
+      const modal = new bootstrap.Modal(document.getElementById('editRifaModal'));
+      modal.show();
+    })
+    .catch(error => {
+      setAdminButtonsState(true);
+      console.error('Erro ao carregar dados da rifa:', error);
+      showNotification('Erro ao carregar dados da rifa. Tente novamente.', 'error');
+    });
+}
+
+function confirmarExclusao(rifaId, rifaTitulo) {
+  if (isProcessing) return;
+  
+  document.getElementById('rifaToDelete').textContent = rifaTitulo;
+  rifaToDelete = rifaId;
+  
+  const modal = new bootstrap.Modal(document.getElementById('deleteRifaModal'));
+  modal.show();
+}
+
+// Função para habilitar/desabilitar botões de admin
+function setAdminButtonsState(enabled) {
+  const adminButtons = document.querySelectorAll('.btn-admin-edit, .btn-admin-delete');
+  adminButtons.forEach(btn => {
+    btn.disabled = !enabled;
+  });
+}
+
+// Prevenir múltiplas submissões nos formulários
+document.addEventListener('DOMContentLoaded', function() {
+  // Formulário de criar rifa
+  const createForm = document.querySelector('#addRifaModal form');
+  if (createForm) {
+    createForm.addEventListener('submit', function(e) {
+      if (isProcessing) {
+        e.preventDefault();
+        return false;
+      }
+      
+      isProcessing = true;
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Criando...';
+      
+      // Timeout para evitar travamento
+      setTimeout(() => {
+        if (isProcessing) {
+          isProcessing = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      }, 10000);
+    });
+  }
+  
+  // Formulário de editar rifa
+  const editForm = document.getElementById('editRifaForm');
+  if (editForm) {
+    editForm.addEventListener('submit', function(e) {
+      if (isProcessing) {
+        e.preventDefault();
+        return false;
+      }
+      
+      isProcessing = true;
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
+      
+      // Timeout para evitar travamento
+      setTimeout(() => {
+        if (isProcessing) {
+          isProcessing = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      }, 10000);
+    });
+  }
+});
+
+// Confirmar exclusão com feedback melhorado
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+  if (rifaToDelete && !isProcessing) {
+    isProcessing = true;
+    
+    const btn = this;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Excluindo...';
+    
+    // Enviar requisição de exclusão
+    fetch(`/excluir-rifa/${rifaToDelete}/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      },
+    })
+    .then(response => response.json())
+    .then(data => {
+      isProcessing = false;
+      
+      if (data.success) {
+        // Fechar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRifaModal'));
+        modal.hide();
+        
+        // Mostrar notificação de sucesso
+        showNotification(data.message, 'success');
+        
+        // Aguardar um pouco e recarregar página
+        setTimeout(() => {
+          window.location.href = '/sorteios/?deleted=1';
+        }, 1500);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showNotification(data.error || 'Erro ao excluir rifa. Tente novamente.', 'error');
+      }
+    })
+    .catch(error => {
+      isProcessing = false;
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      console.error('Erro ao excluir rifa:', error);
+      showNotification('Erro ao excluir rifa. Tente novamente.', 'error');
+    });
+  }
+});
+
+// Função para mostrar notificações
+function showNotification(message, type = 'info') {
+  // Criar elemento de notificação
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = `
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  `;
+  
+  notification.innerHTML = `
+    <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remover automaticamente após 5 segundos
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Função para filtrar rifas com estados vazios melhorados
+function filterRifas(status) {
+  const cards = document.querySelectorAll('.rifa-card-premium');
+  const emptyStateGeneral = document.getElementById('emptyStateGeneral');
+  const emptyStateConcluded = document.getElementById('emptyStateConcluded');
+  const tabs = document.querySelectorAll('.filter-tab');
+  let visibleCount = 0;
+
+  // Atualizar abas ativas
+  tabs.forEach(tab => {
+    tab.classList.remove('active');
+    if (tab.getAttribute('onclick').includes(`'${status}'`)) {
+      tab.classList.add('active');
+    }
+  });
+
+  // Filtrar cards
+  cards.forEach(card => {
+    const cardStatus = card.getAttribute('data-status');
+    if (status === 'todos' || cardStatus === status) {
+      card.style.display = 'block';
+      visibleCount++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  // Controlar estados vazios
+  if (visibleCount === 0) {
+    if (status === 'encerrada') {
+      // Mostrar estado especial para concluídos
+      if (emptyStateGeneral) emptyStateGeneral.style.display = 'none';
+      if (emptyStateConcluded) emptyStateConcluded.style.display = 'flex';
+    } else {
+      // Mostrar estado geral
+      if (emptyStateGeneral) emptyStateGeneral.style.display = 'flex';
+      if (emptyStateConcluded) emptyStateConcluded.style.display = 'none';
+    }
+  } else {
+    // Esconder ambos os estados vazios
+    if (emptyStateGeneral) emptyStateGeneral.style.display = 'none';
+    if (emptyStateConcluded) emptyStateConcluded.style.display = 'none';
+  }
+}
+
+// Event listeners para o modal de sorteio
+document.addEventListener('DOMContentLoaded', function() {
+  const btnConfirmarSorteio = document.getElementById('btnConfirmarSorteio');
+  const btnFecharSorteio = document.getElementById('btnFecharSorteio');
+  const sortearModal = document.getElementById('sortearRifaModal');
+  
+  if (btnConfirmarSorteio) {
+    btnConfirmarSorteio.addEventListener('click', executarSorteio);
+  }
+  
+  if (btnFecharSorteio) {
+    btnFecharSorteio.addEventListener('click', function() {
+      // Fechar modal e recarregar página para mostrar resultado
+      bootstrap.Modal.getInstance(sortearModal).hide();
+      window.location.href = '/sorteios/?sorteado=1';
+    });
+  }
+  
+  // Reset do modal quando fechar
+  if (sortearModal) {
+    sortearModal.addEventListener('hidden.bs.modal', function() {
+      document.querySelector('.sorteio-info').style.display = 'block';
+      document.querySelector('.sorteio-animation').style.display = 'none';
+      document.getElementById('sorteioResult').style.display = 'none';
+      document.getElementById('btnConfirmarSorteio').style.display = 'inline-block';
+      document.getElementById('btnCancelarSorteio').style.display = 'inline-block';
+      document.getElementById('btnFecharSorteio').style.display = 'none';
+      rifaParaSortear = null;
+    });
+  }
+});
+
+// Detectar parâmetros URL para mostrar notificações
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  if (urlParams.get('created') === '1') {
+    showNotification('Rifa criada com sucesso!', 'success');
+    // Limpar parâmetro da URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  if (urlParams.get('edited') === '1') {
+    showNotification('Rifa editada com sucesso!', 'success');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  if (urlParams.get('deleted') === '1') {
+    showNotification('Rifa excluída com sucesso!', 'success');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  if (urlParams.get('sorteado') === '1') {
+    showNotification('Sorteio realizado com sucesso! 🎉', 'success');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  if (urlParams.get('error') === '1') {
+    showNotification('Ocorreu um erro na operação. Tente novamente.', 'error');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  // Inicializar filtro de rifas
+  filterRifas('todos');
+});
+</script>
 {% endblock %}

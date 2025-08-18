@@ -10,11 +10,13 @@ class Rifa(models.Model):
     titulo = models.CharField(max_length=200)
     descricao = models.TextField(blank=True)
     preco = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    quantidade_numeros = models.PositiveIntegerField(default=100, help_text='Quantidade total de números disponíveis para esta rifa.')
     imagem = models.ImageField(upload_to='rifas/', blank=True, null=True)
     encerrada = models.BooleanField(default=False, help_text='Marque como encerrada para tornar os bilhetes indisponíveis.')
     data_encerramento = models.DateTimeField(null=True, blank=True, help_text='Data e hora de encerramento da rifa.')
     ganhador_nome = models.CharField(max_length=100, blank=True, null=True, help_text='Nome do ganhador.')
     ganhador_numero = models.CharField(max_length=20, blank=True, null=True, help_text='Número do bilhete sorteado.')
+    ganhador_cpf = models.CharField(max_length=14, blank=True, null=True, help_text='CPF do ganhador.')
     ganhador_foto = models.ImageField(upload_to='ganhadores/', blank=True, null=True, help_text='Foto do ganhador.')
 
     def __str__(self):

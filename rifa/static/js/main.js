@@ -9,31 +9,83 @@ document.addEventListener("DOMContentLoaded", () => {
     if (input) input.value = valor;
   };
 
-  // MENU LATERAL
+  // Função para mostrar feedback visual
+  const showFeedback = (message, type = 'success') => {
+    const feedback = document.createElement('div');
+    feedback.className = `feedback-toast ${type}`;
+    feedback.textContent = message;
+    feedback.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'success' ? 'var(--success)' : 'var(--danger)'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    
+    document.body.appendChild(feedback);
+    
+    setTimeout(() => {
+      feedback.style.opacity = '1';
+      feedback.style.transform = 'translateX(0)';
+    }, 100);
+    
+    setTimeout(() => {
+      feedback.style.opacity = '0';
+      feedback.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (document.body.contains(feedback)) {
+          document.body.removeChild(feedback);
+        }
+      }, 300);
+    }, 3000);
+  };
+
+  // MENU LATERAL MELHORADO
   const btnMenu = document.getElementById("btn-menu");
   const btnFecharMenu = document.getElementById("btn-fechar-menu");
   const menuLateral = document.getElementById("menu-lateral");
+  let overlay = null;
 
-  if (btnMenu && btnFecharMenu && menuLateral) {
+  if (btnMenu && menuLateral) {
+    // Criar overlay se não existir
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'menu-overlay';
+      document.body.appendChild(overlay);
+    }
+
     btnMenu.addEventListener("click", () => {
-      menuLateral.classList.add("open");
-      toggleScroll(false);
-    });
-
-    btnFecharMenu.addEventListener("click", () => {
-      menuLateral.classList.remove("open");
-      toggleScroll(true);
-    });
-
-    window.addEventListener("click", (e) => {
-      if (
-        menuLateral.classList.contains("open") &&
-        !menuLateral.contains(e.target) &&
-        e.target.id !== "btn-menu"
-      ) {
-        menuLateral.classList.remove("open");
+      menuLateral.classList.toggle("open");
+      
+      if (menuLateral.classList.contains("open")) {
+        overlay.classList.add("active");
+        toggleScroll(false);
+      } else {
+        overlay.classList.remove("active");
         toggleScroll(true);
       }
+    });
+
+    if (btnFecharMenu) {
+      btnFecharMenu.addEventListener("click", () => {
+        menuLateral.classList.remove("open");
+        overlay.classList.remove("active");
+        toggleScroll(true);
+      });
+    }
+
+    // Fechar menu ao clicar no overlay
+    overlay.addEventListener("click", () => {
+      menuLateral.classList.remove("open");
+      overlay.classList.remove("active");
+      toggleScroll(true);
     });
   }
 

@@ -43,7 +43,7 @@ def sortear_rifa(request, rifa_id):
         send_mail(
             '🎉 Parabéns! Seu bilhete foi sorteado. Receba o seu prêmio.',
             '',
-            'Vipebook <noreply@rifa.com>',
+            'Pantanal da Sorte <noreply@rifa.com>',
             [email],
             fail_silently=True,
             html_message=html_message
@@ -122,18 +122,33 @@ def home(request):
 def buscar_pedidos(request):
     if request.method == 'POST':
         telefone = request.POST.get('telefone', '').strip()
-        cpf = request.POST.get('cpf', '').strip().replace('.', '').replace('-', '')
+        cpf = request.POST.get('cpf', '').strip().replace('.', '').replace('-', '').replace('(', '').replace(')', '').replace(' ', '')
+        
         numeros = []
+        
         if telefone:
-            numeros = Numero.objects.filter(comprador_telefone=telefone).values_list('numero', flat=True)
+            # Remove formatação do telefone para busca mais flexível
+            telefone_limpo = telefone.replace('(', '').replace(')', '').replace(' ', '').replace('-', '')
+            numeros = Numero.objects.filter(comprador_telefone__icontains=telefone_limpo).select_related('rifa')
         elif cpf and len(cpf) == 11 and cpf.isdigit():
-            numeros = Numero.objects.filter(comprador_cpf=cpf).values_list('numero', flat=True)
-        numeros = list(numeros)
+            numeros = Numero.objects.filter(comprador_cpf=cpf).select_related('rifa')
+        
         if numeros:
-            return JsonResponse({'status': 'ok', 'numeros': numeros})
+            # Retorna informações mais detalhadas dos números
+            numeros_data = []
+            for numero in numeros:
+                numeros_data.append({
+                    'numero': numero.numero,
+                    'rifa_titulo': numero.rifa.titulo if numero.rifa else 'Sem título',
+                    'status': numero.get_status_display(),
+                    'comprador_nome': numero.comprador_nome or 'Não informado'
+                })
+            return JsonResponse({'status': 'success', 'numeros': numeros_data})
         else:
-            return JsonResponse({'status': 'notfound'})
-    return JsonResponse({'status': 'error', 'msg': 'Método inválido'})
+            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado para os dados informados.'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Método inválido ou dados não fornecidos.'})
+
 def sorteios(request):
     rifas = Rifa.objects.all()
     return render(request, 'rifa/sorteios.html', {'rifas': rifas})
@@ -142,15 +157,33 @@ def sorteios(request):
 @csrf_exempt
 def buscar_numeros_por_telefone(request):
     if request.method == 'POST':
-        telefone = request.POST.get('telefone')
-        numeros = Numero.objects.filter(comprador_telefone=telefone).values_list('numero', flat=True)
-        numeros = list(numeros)
+        telefone = request.POST.get('telefone', '').strip()
+        cpf = request.POST.get('cpf', '').strip().replace('.', '').replace('-', '').replace('(', '').replace(')', '').replace(' ', '')
+        
+        numeros = []
+        
+        if telefone:
+            # Remove formatação do telefone para busca mais flexível
+            telefone_limpo = telefone.replace('(', '').replace(')', '').replace(' ', '').replace('-', '')
+            numeros = Numero.objects.filter(comprador_telefone__icontains=telefone_limpo).select_related('rifa')
+        elif cpf and len(cpf) == 11 and cpf.isdigit():
+            numeros = Numero.objects.filter(comprador_cpf=cpf).select_related('rifa')
+        
         if numeros:
-            return JsonResponse({'status': 'ok', 'numeros': numeros})
+            # Retorna informações mais detalhadas dos números
+            numeros_data = []
+            for numero in numeros:
+                numeros_data.append({
+                    'numero': numero.numero,
+                    'rifa_titulo': numero.rifa.titulo if numero.rifa else 'Sem título',
+                    'status': numero.get_status_display(),
+                    'comprador_nome': numero.comprador_nome or 'Não informado'
+                })
+            return JsonResponse({'status': 'success', 'numeros': numeros_data})
         else:
-            return JsonResponse({'status': 'notfound'})
-    return JsonResponse({'status': 'error'})
-from django.contrib import messages
+            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado para os dados informados.'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Método inválido ou dados não fornecidos.'})
 
 def raffle_detail(request, raffle_id):
     rifa = get_object_or_404(Rifa, id=raffle_id)
@@ -194,3 +227,262 @@ def reservar_numero(request, raffle_id, number_id):
 
     # GET: exibe formulário simples para reservar
     return render(request, 'rifa/reservar_numero.html', {'raffle': rifa, 'numero': numero_obj, 'user': request.user})
+
+@login_required
+def criar_rifa(request):
+    """View para administradores criarem rifas pelo painel do site"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, 'Apenas administradores podem criar rifas.')
+        return redirect('sorteios')
+    
+    if request.method == 'POST':
+        try:
+            # Criar nova rifa com os dados do formulário
+            rifa = Rifa()
+            rifa.titulo = request.POST.get('titulo')
+            rifa.descricao = request.POST.get('descricao', '')
+            rifa.preco = float(request.POST.get('preco', 0))
+            rifa.quantidade_numeros = int(request.POST.get('quantidade_numeros', 100))
+            
+            # Data de encerramento (opcional)
+            data_encerramento = request.POST.get('data_encerramento')
+            if data_encerramento:
+                from django.utils import timezone
+                import datetime
+                rifa.data_encerramento = timezone.make_aware(
+                    datetime.datetime.fromisoformat(data_encerramento)
+                )
+            
+            # Status da rifa
+            rifa.encerrada = 'encerrada' in request.POST
+            
+            # Upload de imagem
+            if 'imagem' in request.FILES:
+                rifa.imagem = request.FILES['imagem']
+            
+            rifa.save()
+            
+            # Criar os números da rifa automaticamente
+            from .models import Numero
+            for numero in range(1, rifa.quantidade_numeros + 1):
+                Numero.objects.create(
+                    rifa=rifa,
+                    numero=numero,
+                    status='livre'
+                )
+            
+            messages.success(request, f'Rifa "{rifa.titulo}" criada com sucesso! {rifa.quantidade_numeros} números gerados.')
+            
+            # Redirecionamento com parâmetro para evitar reenvio do formulário
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('sorteios') + '?created=1')
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao criar rifa: {str(e)}')
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('sorteios') + '?error=1')
+    
+    # Se não for POST, redireciona para sorteios
+    from django.http import HttpResponseRedirect
+    from django.urls import reverse
+    return HttpResponseRedirect(reverse('sorteios'))
+
+@login_required
+def editar_rifa(request, rifa_id):
+    """View para administradores editarem rifas"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, 'Apenas administradores podem editar rifas.')
+        return redirect('sorteios')
+    
+    rifa = get_object_or_404(Rifa, id=rifa_id)
+    
+    if request.method == 'POST':
+        try:
+            # Atualizar dados da rifa
+            rifa.titulo = request.POST.get('titulo', rifa.titulo)
+            rifa.descricao = request.POST.get('descricao', rifa.descricao)
+            rifa.preco = float(request.POST.get('preco', rifa.preco))
+            
+            # Data de encerramento (opcional)
+            data_encerramento = request.POST.get('data_encerramento')
+            if data_encerramento:
+                from django.utils import timezone
+                import datetime
+                rifa.data_encerramento = timezone.make_aware(
+                    datetime.datetime.fromisoformat(data_encerramento)
+                )
+            else:
+                rifa.data_encerramento = None
+            
+            # Status da rifa
+            rifa.encerrada = 'encerrada' in request.POST
+            
+            # Upload de nova imagem (opcional)
+            if 'imagem' in request.FILES:
+                rifa.imagem = request.FILES['imagem']
+            
+            rifa.save()
+            
+            messages.success(request, f'Rifa "{rifa.titulo}" editada com sucesso!')
+            
+            # Redirecionamento com parâmetro para evitar reenvio
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('sorteios') + '?edited=1')
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao editar rifa: {str(e)}')
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+            return HttpResponseRedirect(reverse('sorteios') + '?error=1')
+    
+    from django.http import HttpResponseRedirect
+    from django.urls import reverse
+    return HttpResponseRedirect(reverse('sorteios'))
+
+@login_required
+def excluir_rifa(request, rifa_id):
+    """View para administradores excluírem rifas"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Permissão negada'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            rifa = get_object_or_404(Rifa, id=rifa_id)
+            titulo = rifa.titulo
+            
+            # Excluir todos os números relacionados
+            from .models import Numero
+            Numero.objects.filter(rifa=rifa).delete()
+            
+            # Excluir a rifa
+            rifa.delete()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'Rifa "{titulo}" excluída com sucesso!',
+                'redirect': True
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': f'Erro ao excluir rifa: {str(e)}'}, status=500)
+    
+    return JsonResponse({'error': 'Método não permitido'}, status=405)
+
+@login_required
+def api_rifa_detail(request, rifa_id):
+    """API para obter dados de uma rifa (para edição)"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Permissão negada'}, status=403)
+    
+    try:
+        rifa = get_object_or_404(Rifa, id=rifa_id)
+        
+        # Contar números vendidos
+        numeros_vendidos = Numero.objects.filter(
+            rifa=rifa, 
+            status='pago'
+        ).count()
+        
+        data = {
+            'id': rifa.id,
+            'titulo': rifa.titulo,
+            'descricao': rifa.descricao,
+            'preco': float(rifa.preco),
+            'quantidade_numeros': rifa.quantidade_numeros,
+            'encerrada': rifa.encerrada,
+            'data_encerramento': rifa.data_encerramento.isoformat() if rifa.data_encerramento else None,
+            'numeros_vendidos': numeros_vendidos,
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def sortear_rifa_ajax(request, rifa_id):
+    """Função para sortear uma rifa via AJAX"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Permissão negada'}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        import random
+        from django.template.loader import render_to_string
+        from django.core.mail import send_mail
+        
+        rifa = get_object_or_404(Rifa, id=rifa_id)
+        
+        # Verificar se a rifa já está encerrada
+        if rifa.encerrada:
+            return JsonResponse({
+                'success': False,
+                'message': 'Esta rifa já está encerrada.'
+            })
+        
+        # Buscar números vendidos (status 'pago') apenas desta rifa específica
+        numeros_vendidos = Numero.objects.filter(
+            rifa=rifa, 
+            status='pago'
+        )
+        
+        if not numeros_vendidos.exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Nenhum número foi vendido para esta rifa ainda.'
+            })
+        
+        # Realizar o sorteio - escolher um número aleatório entre os vendidos
+        numero_sorteado = random.choice(list(numeros_vendidos))
+        
+        # Obter dados do comprador
+        comprador_nome = numero_sorteado.comprador_nome or 'Nome não informado'
+        comprador_cpf = numero_sorteado.comprador_cpf or 'CPF não informado'
+        comprador_email = numero_sorteado.comprador_email
+        
+        # Atualizar a rifa com os dados do ganhador
+        rifa.ganhador_nome = comprador_nome
+        rifa.ganhador_numero = numero_sorteado.numero
+        rifa.ganhador_cpf = comprador_cpf
+        rifa.encerrada = True
+        rifa.save()
+        
+        # Enviar e-mail para o ganhador (opcional)
+        if comprador_email:
+            try:
+                html_message = render_to_string('emails/ganhador_rifa.html', {
+                    'nome_ganhador': comprador_nome,
+                    'titulo_rifa': rifa.titulo,
+                    'numero_bilhete': numero_sorteado.numero,
+                    'valor_premio': rifa.preco,
+                })
+                send_mail(
+                    f'🎉 Parabéns! Você ganhou: {rifa.titulo}',
+                    f'Parabéns {comprador_nome}! Seu número {numero_sorteado.numero} foi sorteado na rifa "{rifa.titulo}".',
+                    'Pantanal da Sorte <noreply@rifas.com>',
+                    [comprador_email],
+                    fail_silently=True,
+                    html_message=html_message
+                )
+            except Exception as email_error:
+                print(f"Erro ao enviar email: {email_error}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Sorteio realizado com sucesso!',
+            'numero_sorteado': numero_sorteado.numero,
+            'nome_ganhador': comprador_nome,
+            'cpf_ganhador': comprador_cpf,
+            'rifa_titulo': rifa.titulo
+        })
+        
+    except Exception as e:
+        print(f"Erro no sorteio: {e}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Erro interno no servidor. Tente novamente.'
+        }, status=500)

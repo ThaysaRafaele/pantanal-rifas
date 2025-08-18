@@ -1,0 +1,20 @@
+/* Reset básico */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Poppins', sans-serif; color: var(--text-color); background: linear-gradient(180deg, var(--bg-gradient-start), var(--bg-gradient-end)); }
+img { max-width: 100%; display: block; }
+
+/* Overrides globais para melhor visibilidade de texto */
+.text-muted { color:#ffffff !important; opacity:.92 !important; }
+.preco { color:#ffffff !important; }
+p, .card p { color:#ffffff; }
+small, .small { color:#f0f0f0 !important; }
+
+/* Títulos dos sorteios (cards da home / listagens) em verde */
+.card h3,
+.card h2,
+.card-title,
+h3.sorteio-titulo {
+  color:#22c55e !important; /* verde */
+  letter-spacing:.5px;
+}

@@ -1,0 +1,181 @@
+/* Layout global */
+.conteudo-centralizado { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 2rem; 
+}
+
+/* Header melhorado */
+.navbar-custom { 
+  background: rgba(0,0,0,0.95); 
+  backdrop-filter: blur(10px);
+  color: #fff; 
+  padding: 15px 20px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.navbar-custom:hover {
+  border-bottom-color: rgba(255, 215, 0, 0.6);
+}
+
+/* Logo original */
+.navbar-custom .logo { 
+  font-size: 1.8rem; 
+  font-weight: bold; 
+  color: var(--accent-gold); 
+  text-decoration: none; 
+  transition: all 0.3s ease;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.navbar-custom .logo:hover {
+  color: var(--accent-gold-light);
+  transform: scale(1.05);
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.6);
+}
+
+.navbar-custom .icons { 
+  display: flex; 
+  gap: 20px; 
+  font-size: 1.4rem; 
+  color: #fff; 
+}
+
+.navbar-custom .icons i {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.navbar-custom .icons i:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--accent-gold);
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* Menu lateral melhorado */
+.menu-lateral{ 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 280px; 
+  height: 100vh; 
+  background: linear-gradient(180deg, #000 0%, #1a1a1a 100%); 
+  color: #fff; 
+  transform: translateX(-100%); 
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  z-index: 1050; 
+  padding: 20px;
+  border-right: 1px solid rgba(255, 215, 0, 0.3);
+  backdrop-filter: blur(10px);
+  box-shadow: 2px 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.menu-lateral.open{ 
+  transform: translateX(0); 
+}
+
+.menu-lateral ul{ 
+  list-style: none; 
+  padding: 0; 
+  margin-top: 60px;
+}
+
+.menu-lateral li{ 
+  padding: 15px 0; 
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+
+.menu-lateral li:hover {
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
+  margin: 0 -10px;
+  padding-left: 25px;
+  padding-right: 25px;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.menu-lateral a{ 
+  color: #fff; 
+  text-decoration: none; 
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.menu-lateral a:hover {
+  color: var(--accent-gold);
+  text-shadow: 0 0 8px var(--accent-gold);
+}
+
+/* Breadcrumbs */
+.breadcrumb-container {
+  background: rgba(0,0,0,0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.breadcrumb {
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.breadcrumb-item {
+  color: #ccc;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: var(--accent-gold);
+  margin: 0 8px;
+}
+
+.breadcrumb-item.active {
+  color: var(--accent-gold);
+  font-weight: 600;
+}
+
+.breadcrumb-item a {
+  color: #ccc;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.breadcrumb-item a:hover {
+  color: var(--accent-gold);
+}
+
+/* Overlay para menu mobile */
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1040;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.menu-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}

@@ -1,0 +1,78 @@
+/* Override para garantir que todas as cores sejam douradas */
+
+/* Força cor dourada em todos os títulos de rifas */
+.raffle-title,
+h1.raffle-title,
+h2.raffle-title,
+h3.raffle-title,
+.card h3,
+.premio-title {
+  color: var(--accent-gold) !important;
+  text-shadow: 0 0 10px var(--accent-gold), 0 0 20px var(--accent-gold) !important;
+}
+
+/* Botões primários dourados */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark)) !important;
+  border: 1px solid var(--accent-gold) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold)) !important;
+  border-color: var(--accent-gold-light) !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Links e elementos ativos */
+a:hover,
+.nav-link:hover,
+.link-gold:hover {
+  color: var(--accent-gold) !important;
+  text-shadow: 0 0 8px var(--accent-gold) !important;
+}
+
+/* Barras de progresso e status */
+.progress-bar,
+.status-disponivel,
+.disponivel {
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-gold-dark)) !important;
+  color: #000 !important;
+}
+
+/* Badges e labels */
+.badge-primary,
+.label-primary {
+  background: var(--accent-gold) !important;
+  color: #000 !important;
+}
+
+/* Inputs focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent-gold) !important;
+  box-shadow: 0 0 0 0.2rem rgba(255, 215, 0, 0.25) !important;
+}
+
+/* Elementos com borda dourada */
+.border-gold {
+  border-color: var(--accent-gold) !important;
+}
+
+/* Background dourado sutil */
+.bg-gold-subtle {
+  background: rgba(255, 215, 0, 0.1) !important;
+}
+
+/* Texto dourado */
+.text-gold {
+  color: var(--accent-gold) !important;
+}
+
+/* Sombra dourada */
+.shadow-gold {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3) !important;
+}

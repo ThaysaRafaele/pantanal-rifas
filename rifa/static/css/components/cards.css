@@ -1,0 +1,39 @@
+/* Cards genéricos */
+.card{ 
+  background: var(--card-bg-dark); 
+  border-radius: 16px; 
+  overflow: hidden; 
+  box-shadow: 0 8px 20px rgba(0,0,0,.6); 
+  transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow .3s cubic-bezier(0.4, 0, 0.2, 1),
+              filter .3s ease;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.card:hover{ 
+  transform: translateY(-8px) scale(1.02); 
+  box-shadow: 0 20px 40px rgba(255, 215, 0, 0.2), 0 12px 28px rgba(0,0,0,.8);
+  border-color: rgba(255, 215, 0, 0.5);
+  filter: brightness(1.05);
+}
+.card img{ width:100%; height:220px; object-fit:cover; }
+.card-content{ padding:1rem; }
+.card .card-content h3,
+.raffle-title {
+  color: var(--accent-gold) !important;
+  font-weight: 900 !important;
+  font-size: 1.8rem !important;
+  text-shadow: 0 0 10px var(--accent-gold), 0 0 20px var(--accent-gold), 0 2px 4px rgba(0,0,0,0.8) !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  margin: 0.5rem 0 !important;
+}
+
+/* Cards de prêmios verticais (caso use) */
+.premios-lista-vertical{ display:flex; flex-direction:column; gap:1.5rem; }
+.premio-card-vertical{ background:rgba(255,255,255,.1); border-radius:16px; overflow:hidden; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.2); }
+.premio-img-vertical{ width:100%; height:200px; object-fit:cover; display:block; }
+.premio-content-vertical{ padding:1.5rem; color:#fff; }
+.premio-footer-vertical{ display:flex; justify-content:space-between; align-items:center; }
+.btn-adquirir-vertical{ background:var(--primary); color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; transition:background .2s; }
+.btn-adquirir-vertical:hover{ background:var(--primary-dark); }

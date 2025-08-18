@@ -1,0 +1,43 @@
+/* Overrides globais de visibilidade de texto */
+.text-muted { 
+  color: var(--text-color) !important; 
+  opacity: 0.92 !important; 
+}
+
+.preco, .card .preco { 
+  color: var(--text-color) !important; 
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Parágrafos e textos em cards */
+p, .card p { 
+  color: var(--text-color); 
+  line-height: 1.6;
+}
+
+/* Ajuste para pequenos detalhes */
+small, .small { 
+  color: var(--text-secondary) !important; 
+}
+
+/* Melhorias de legibilidade */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.card-content p {
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+.card-content .preco {
+  background: linear-gradient(135deg, var(--raffle-title-color), #00c95d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-top: 0.5rem;
+}

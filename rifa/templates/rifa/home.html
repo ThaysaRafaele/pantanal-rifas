@@ -1,27 +1,77 @@
 {% extends 'rifa/base.html' %}
 
-{% block title %}Prêmios{% endblock %}
+{% block title %}Inicio{% endblock %}
 
 {% block content %}
-  <h2 class="fade-in" data-aos="fade-up">⚡ Prêmios</h2>
+  <h2 class="fade-in text-glow" data-aos="fade-up">⚡ Prêmios</h2>
   <div class="card-grid">
     {% for rifa in rifas %}
-      <a href="{% url 'raffle-detail' rifa.id %}" style="text-decoration:none;color:inherit;">
-        <div class="card" data-aos="zoom-in" data-aos-delay="{{ forloop.counter0|add:1 }}00">
+      <a href="{% url 'raffle-detail' rifa.id %}" style="text-decoration:none;color:inherit;" class="hover-raise">
+        <div class="card fade-in-up clickable" data-aos="zoom-in" data-aos-delay="{{ forloop.counter0|add:1 }}00">
           {% if rifa.imagem %}
-            <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}">
+            <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" loading="lazy">
           {% endif %}
           <div class="card-content">
-            <h3>{{ rifa.titulo|upper }}</h3>
+            <h3 class="raffle-title">{{ rifa.titulo|upper }}</h3>
             <p>{{ rifa.descricao }}</p>
-            <span class="preco">Por apenas R$ {{ rifa.preco|floatformat:2 }}</span>
+            <span class="preco">POR APENAS R${{ rifa.preco|floatformat:2 }}</span>
+            {% if rifa.encerrada %}
+              <div class="badge-danger" style="margin-top: 10px;">Encerrada</div>
+            {% else %}
+              <div class="badge-success" style="margin-top: 10px;">Disponível</div>
+            {% endif %}
           </div>
         </div>
       </a>
     {% empty %}
-      <p>Nenhum prêmio cadastrado ainda.</p>
+      <div class="center" style="grid-column: 1 / -1; min-height: 200px;">
+        <div class="glass" style="padding: 2rem; text-align: center;">
+          <i class="fas fa-gift" style="font-size: 3rem; color: var(--raffle-title-color); margin-bottom: 1rem;"></i>
+          <p>Nenhum prêmio cadastrado ainda.</p>
+          <p class="text-muted">Volte em breve para conferir os novos sorteios!</p>
+        </div>
+      </div>
     {% endfor %}
   </div>
+
+  <!-- Seção de Etapas do Sorteio -->
+  <section class="etapas-sorteio">
+    <div class="container">
+      <h2 class="fade-in text-glow" data-aos="fade-up" style="text-align: center; margin-bottom: 3rem;">🎯 Como Participar</h2>
+      <div class="steps-grid">
+        <div class="step" data-aos="fade-up" data-aos-delay="100">
+          <div class="step-icon">
+            <i class="fas fa-search"></i>
+          </div>
+          <h3>ESCOLHA O SORTEIO</h3>
+          <p>Escolha o sorteio que gostaria de concorrer, verifique a descrição e o regulamento. Em caso de dúvidas entre em contato com o administrador.</p>
+        </div>
+        <div class="step" data-aos="fade-up" data-aos-delay="200">
+          <div class="step-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h3>SELECIONE SEUS BILHETES</h3>
+          <p>Você pode escolher quantos bilhetes desejar! Quanto mais bilhetes, mais chances de ganhar.</p>
+        </div>
+        <div class="step" data-aos="fade-up" data-aos-delay="300">
+          <div class="step-icon">
+            <i class="fas fa-money-bill-wave"></i>
+          </div>
+          <h3>FAÇA O PAGAMENTO</h3>
+          <p>Faça o pagamento no(s) método(s) de pagamento(s) disponíveis no site.</p>
+        </div>
+        <div class="step" data-aos="fade-up" data-aos-delay="400">
+          <div class="step-icon">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <h3>AGUARDE O SORTEIO</h3>
+          <p>Aguarde o resultado. Cruze os dedos! Você pode ser o próximo sorteado.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </section>
 {% endblock %}
 
 

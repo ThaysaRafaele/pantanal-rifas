@@ -1,0 +1,134 @@
+/* Utilitários */
+
+/* Badges básicos */
+.badge{ 
+  padding: .4em .7em; 
+  border-radius: 12px; 
+  font-size: .75rem; 
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hidden{ display: none !important; }
+.center{ display: flex; justify-content: center; align-items: center; }
+.text-muted{ color: var(--text-muted); }
+
+/* Textos */
+.text-glow {
+  text-shadow: 0 0 8px var(--raffle-title-color), 0 0 16px var(--raffle-title-color);
+}
+
+.text-neon {
+  color: var(--raffle-title-color);
+  text-shadow: 0 0 5px var(--raffle-title-color);
+}
+
+/* Estados de loading */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(57, 255, 20, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--raffle-title-color);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Badges e indicadores */
+.badge-success {
+  background: linear-gradient(135deg, var(--success), #20c997);
+  color: white;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-warning {
+  background: linear-gradient(135deg, var(--warning), #fd7e14);
+  color: #000;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-danger {
+  background: linear-gradient(135deg, var(--danger), #e74c3c);
+  color: white;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Feedback visual */
+.pulse {
+  animation: pulse-glow 2s infinite;
+}
+
+.shake {
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+/* Interactive elements */
+.clickable {
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.clickable:hover {
+  transform: translateY(-2px);
+}
+
+.clickable:active {
+  transform: translateY(0);
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+/* Grid helpers */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-xl);
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+  }
+}
+
+/* Focus states */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(57, 255, 20, 0.3);
+  border-radius: var(--radius-md);
+}

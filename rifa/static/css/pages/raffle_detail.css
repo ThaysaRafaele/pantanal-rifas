@@ -1,0 +1,153 @@
+/* raffle_detail.css - estilo moderno para a página de detalhes da rifa */
+
+body {
+  background: linear-gradient(145deg, #1a1a1a, #2b2b2b);
+  color: #f5f5f5;
+}
+
+.sorteios-section {
+  min-height: 100vh;
+  padding: 40px 15px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.sorteios-section .glass-login {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.glass-login {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+  padding: 30px 25px;
+  color: #f5f5f5;
+  width: 100%;
+  max-width: 700px;
+}
+
+.glass-login h3,
+.glass-login h5 {
+  color: #ffffff;
+}
+
+.glass-login .text-muted {
+  color: #ccc !important;
+}
+
+.badge.bg-success {
+  background-color: #28a745 !important;
+}
+
+.badge.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+.badge.bg-light {
+  background-color: #f8f9fa !important;
+  color: #212529;
+}
+
+.alert.alert-secondary {
+  background-color: #333;
+  border: none;
+  color: #ddd;
+}
+
+.alert.alert-warning {
+  background-color: #ffcc00;
+  color: #000;
+}
+
+.bg-light {
+  background-color: #2e2e2e !important;
+  color: #f0f0f0;
+}
+
+.form-control {
+  background-color: #1f1f1f;
+  border: 1px solid #444;
+  color: #f5f5f5;
+}
+
+.form-control:focus {
+  background-color: #1f1f1f;
+  border-color: #28a745;
+  box-shadow: none;
+  color: #f5f5f5;
+}
+
+.btn-outline-light {
+  border-color: #f5f5f5;
+  color: #f5f5f5;
+}
+
+.btn-outline-light:hover {
+  background-color: #f5f5f5;
+  color: #1a1a1a;
+}
+
+.btn-outline-secondary {
+  border-color: #999;
+  color: #ccc;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #ccc;
+  color: #000;
+}
+
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+/* --- Encerrada --- */
+.card.encerrada {
+  position: relative;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.card.encerrada::after {
+  content: "ENCERRADA";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  z-index: 10;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .glass-login {
+    padding: 20px 15px;
+  }
+
+  .glass-login h3 {
+    font-size: 1.5rem;
+  }
+
+  .btn,
+  .form-control {
+    font-size: 0.9rem;
+  }
+}

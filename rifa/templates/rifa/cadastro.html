@@ -1,8 +1,9 @@
 {% extends 'rifa/base.html' %}
-{% block title %}Cadastro Vipebook{% endblock %}
+{% block title %}Cadastro Pantanal da Sorte{% endblock %}
 
 {% block content %}
-<div class="form-container">
+<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;" data-aos="fade-up">
+  <div class="glass-login w-100" style="max-width: 600px;">
     <h2>Cadastro</h2>
     {% if messages %}
       {% for message in messages %}
@@ -134,12 +135,13 @@
         <label for="referencia" class="form-label">Ponto de referência</label>
         <input type="text" class="form-control" id="referencia" name="referencia">
       </div>
-      <button type="submit" class="btn btn-dark w-100" id="btnSalvar">
+      <button type="submit" class="btn btn-primary w-100" id="btnSalvar">
         <span id="btnText">Salvar</span>
         <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2" style="display:none;" role="status" aria-hidden="true"></span>
       </button>
     </form>
   </div>
+</section>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.8/jquery.inputmask.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />

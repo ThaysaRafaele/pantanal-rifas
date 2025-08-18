@@ -2,35 +2,146 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Parabéns! Você venceu a rifa</title>
+  <title>🎉 Parabéns! Você ganhou no Pantanal da Sorte!</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f7; color: #222; }
-    .container { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); max-width: 480px; margin: 32px auto; padding: 32px; }
-    .trophy { font-size: 2.5rem; color: #ffc107; }
-    .title { font-size: 1.5rem; color: #198754; font-weight: bold; margin-bottom: 12px; }
-    .info { margin: 18px 0; font-size: 1.1rem; }
-    .winner { font-size: 1.2rem; color: #198754; font-weight: bold; }
-    .bilhete { font-size: 1.1rem; color: #0d6efd; font-weight: bold; }
-    .footer { margin-top: 32px; font-size: 0.95rem; color: #888; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #0d0d0d, #1a1a1a); 
+      color: #fff; 
+      margin: 0; 
+      padding: 20px;
+    }
+    .container { 
+      background: linear-gradient(145deg, #1a1a1a, #0d0d0d); 
+      border-radius: 20px; 
+      border: 2px solid #ffd700;
+      box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3); 
+      max-width: 600px; 
+      margin: 0 auto; 
+      padding: 40px; 
+      text-align: center;
+    }
+    .header {
+      margin-bottom: 30px;
+    }
+    .trophy { 
+      font-size: 4rem; 
+      color: #ffd700; 
+      margin-bottom: 15px;
+      display: block;
+    }
+    .brand {
+      font-size: 1.5rem;
+      color: #ffd700;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .title { 
+      font-size: 2rem; 
+      color: #ffd700; 
+      font-weight: bold; 
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .winner-box {
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 25px 0;
+    }
+    .info { 
+      margin: 20px 0; 
+      font-size: 1.2rem; 
+      line-height: 1.6;
+    }
+    .winner { 
+      font-size: 1.4rem; 
+      color: #ffd700; 
+      font-weight: bold; 
+    }
+    .bilhete { 
+      font-size: 2rem; 
+      color: #ffd700; 
+      font-weight: bold;
+      background: rgba(255, 215, 0, 0.2);
+      padding: 10px 20px;
+      border-radius: 10px;
+      display: inline-block;
+      margin: 10px 0;
+    }
+    .premio {
+      font-size: 1.5rem;
+      color: #ffd700;
+      font-weight: bold;
+    }
+    .instructions {
+      background: rgba(255, 215, 0, 0.05);
+      border-left: 4px solid #ffd700;
+      padding: 20px;
+      margin: 25px 0;
+      text-align: left;
+      border-radius: 0 10px 10px 0;
+    }
+    .footer { 
+      margin-top: 40px; 
+      font-size: 0.95rem; 
+      color: #999; 
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+      padding-top: 20px;
+    }
+    .footer .brand-footer {
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="trophy">🏆</div>
-    <div class="title">Parabéns, {{ nome_ganhador }}!</div>
-    <div class="info">
-      Você foi o grande vencedor da rifa <b>{{ titulo_rifa }}</b>.<br>
-      Seu bilhete sorteado foi: <span class="bilhete">{{ numero_bilhete }}</span>.<br>
-      Prêmio: <span class="winner">R$ {{ valor_premio }}</span>
+    <div class="header">
+      <div class="trophy">🏆</div>
+      <div class="brand">Pantanal da Sorte</div>
     </div>
-    <div class="info">
-      Em breve entraremos em contato para entrega do prêmio.<br>
-      Agradecemos por participar e boa sorte nas próximas rifas!
+    
+    <div class="title">🎉 PARABÉNS, {{ nome_ganhador }}! 🎉</div>
+    
+    <div class="winner-box">
+      <div class="info">
+        Você foi o <strong>GRANDE VENCEDOR</strong> da rifa:
+      </div>
+      <div class="winner">{{ titulo_rifa }}</div>
+      
+      <div class="info" style="margin-top: 25px;">
+        Seu número sorteado foi:
+      </div>
+      <div class="bilhete">{{ numero_bilhete }}</div>
+      
+      <div class="info">
+        Valor do prêmio: <span class="premio">R$ {{ valor_premio }}</span>
+      </div>
     </div>
+    
+    <div class="instructions">
+      <h3 style="color: #ffd700; margin-top: 0;">📞 Próximos Passos:</h3>
+      <p>✅ Nossa equipe entrará em contato em breve</p>
+      <p>✅ Tenha seus documentos em mãos</p>
+      <p>✅ Aguarde as instruções para retirada do prêmio</p>
+      <p>✅ Compartilhe sua alegria nas redes sociais!</p>
+    </div>
+    
+    <div class="info">
+      Agradecemos por participar e fazer parte da nossa comunidade!<br>
+      Continue participando das próximas rifas e boa sorte! 🍀
+    </div>
+    
     <div class="footer">
-      <hr>
-      <b>Equipe Rifa Online</b><br>
-      Este e-mail foi enviado automaticamente. Não responda.
+      <div class="brand-footer">PANTANAL DA SORTE</div>
+      <p>A casa dos grandes prêmios!</p>
+      <hr style="border-color: rgba(255, 215, 0, 0.2);">
+      <small>Este e-mail foi enviado automaticamente. Não responda a esta mensagem.</small>
     </div>
   </div>
 </body>

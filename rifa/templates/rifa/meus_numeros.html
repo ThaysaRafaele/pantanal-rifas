@@ -5,7 +5,7 @@
 {% block content %}
 <section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;" data-aos="fade-up">
   <div class="glass-login w-100" style="max-width: 500px;">
-    <h3 class="mb-3 text-center"><span style="font-size:1.3em;">🔎</span> Buscar Pedidos</h3>
+    <h3 class="mb-3 text-center"><span style="font-size:1.3em;">🔎</span> Realizar Buscas: </h3>
     <form id="buscar-form" autocomplete="off">
       <div class="d-flex justify-content-center gap-4 mb-3">
         <div class="form-check form-check-inline">
@@ -18,8 +18,8 @@
         </div>
       </div>
       <div id="campo-telefone" class="mb-3">
-        <label for="inputBusca" class="form-label">Digite seu Telefone</label>
-        <input type="text" class="form-control" id="inputBusca" name="telefone" placeholder="(99) 99999-9999">
+        <label for="inputTelefone" class="form-label">Digite seu Telefone</label>
+        <input type="text" class="form-control" id="inputTelefone" name="telefone" placeholder="(99) 99999-9999">
       </div>
       <div id="campo-cpf" class="mb-3" style="display:none;">
         <label for="inputCPF" class="form-label">Digite seu CPF</label>
@@ -34,25 +34,83 @@
 <script>
 document.getElementById('buscar-form').addEventListener('submit', function(e) {
   e.preventDefault();
+  
   const tipo = document.querySelector('input[name="tipoBusca"]:checked').value;
-  const telefone = document.getElementById('inputBusca').value.trim();
+  const telefone = document.getElementById('inputTelefone').value.trim();
   const cpf = document.getElementById('inputCPF').value.trim();
-  let busca = '';
-  if (tipo === 'telefone' && telefone) {
-    busca = `Buscando números vinculados ao telefone <b>${telefone}</b>...`;
-  } else if (tipo === 'cpf' && cpf) {
-    busca = `Buscando números vinculados ao CPF <b>${cpf}</b>...`;
-  } else {
-    busca = 'Preencha o campo corretamente para buscar.';
+  const resultadosDiv = document.getElementById('resultados');
+  
+  // Validação
+  if (tipo === 'telefone' && !telefone) {
+    resultadosDiv.innerHTML = `<div class="alert alert-warning mt-3">⚠️ Por favor, digite o número do telefone.</div>`;
+    return;
   }
-  document.getElementById('resultados').innerHTML = `<div class="alert alert-info mt-3">🔄 ${busca}</div>`;
+  if (tipo === 'cpf' && !cpf) {
+    resultadosDiv.innerHTML = `<div class="alert alert-warning mt-3">⚠️ Por favor, digite o CPF.</div>`;
+    return;
+  }
+  
+  // Mostrar loading
+  const dadoBusca = tipo === 'telefone' ? telefone : cpf;
+  resultadosDiv.innerHTML = `<div class="alert alert-info mt-3">🔄 Buscando números vinculados ao ${tipo} <b>${dadoBusca}</b>...</div>`;
+  
+  // Preparar dados
+  const formData = new FormData();
+  if (tipo === 'telefone') {
+    formData.append('telefone', telefone);
+  } else {
+    formData.append('cpf', cpf);
+  }
+  
+  // Fazer requisição AJAX
+  fetch('{% url "buscar_pedidos" %}', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.status === 'success') {
+      let html = `<div class="alert alert-success mt-3">✅ Encontrados ${data.numeros.length} número(s):</div>`;
+      html += `<div class="mt-3">`;
+      
+      data.numeros.forEach(numero => {
+        const statusClass = numero.status === 'Pago' ? 'success' : numero.status === 'Reservado' ? 'warning' : 'secondary';
+        
+        html += `
+          <div class="card mb-2">
+            <div class="card-body">
+              <h6 class="card-title">Número: ${numero.numero}</h6>
+              <p class="card-text mb-1"><strong>Rifa:</strong> ${numero.rifa_titulo}</p>
+              <p class="card-text mb-1"><strong>Status:</strong> <span class="badge bg-${statusClass}">${numero.status}</span></p>
+              <p class="card-text mb-0"><strong>Comprador:</strong> ${numero.comprador_nome}</p>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`;
+      resultadosDiv.innerHTML = html;
+      
+    } else if (data.status === 'not_found') {
+      resultadosDiv.innerHTML = `<div class="alert alert-warning mt-3">❌ ${data.message}</div>`;
+    } else {
+      resultadosDiv.innerHTML = `<div class="alert alert-danger mt-3">❌ ${data.message || 'Erro ao buscar os números.'}</div>`;
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
+    resultadosDiv.innerHTML = `<div class="alert alert-danger mt-3">❌ Erro de conexão. Tente novamente.</div>`;
+  });
 });
 </script>
 
 <!-- Máscara de telefone e CPF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/inputmask/5.0.8/inputmask.min.js"></script>
 <script>
-Inputmask({ mask: '(99) 99999-9999', showMaskOnHover: false }).mask('#inputBusca');
+Inputmask({ mask: '(99) 99999-9999', showMaskOnHover: false }).mask('#inputTelefone');
 Inputmask({ mask: '999.999.999-99', showMaskOnHover: false }).mask('#inputCPF');
 
 // Alternar campos conforme radio
