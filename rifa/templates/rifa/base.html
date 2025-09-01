@@ -3,6 +3,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title>{% block title %}Pantanal da Sorte{% endblock %}</title>
   
   <!-- Favicons completos -->
@@ -41,19 +42,43 @@
   <link rel="stylesheet" href="{% static 'css/components/text-overrides.css' %}">
   <link rel="stylesheet" href="{% static 'css/components/steps.css' %}">
   <link rel="stylesheet" href="{% static 'css/components/gold-theme.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/custom-logo.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/payment.css' %}">
   
   {% block extra_css %}{% endblock %}
+  <style>
+    /* Acessibilidade & mobile performance */
+    :root { --tap-target:44px; }
+    button, .btn { min-height: var(--tap-target); }
+    @media (max-width:576px){
+      h1,h2,h3{line-height:1.2;}
+      .conteudo-centralizado{padding-top:1.2rem!important;}
+    }
+    /* Reduz movimentos para usuários que preferem menos animação */
+    @media (prefers-reduced-motion: reduce){
+      *{animation:none!important;transition:none!important;}
+    }
+    /* Evita zoom automático em iOS ao focar inputs (mantendo font >=16px) */
+    input,select,textarea{font-size:16px;}
+    /* Suaviza rolagem */
+    html{scroll-behavior:smooth;}
+    /* Remove highlight azul no mobile */
+    *{-webkit-tap-highlight-color:transparent;}
+  </style>
 </head>
-<body>
+<body class="layout-root">
   <!-- Fundo com gradiente -->
   <div class="bg-gradiente"></div>
 
   <header class="navbar-custom">
+    <button class="menu-toggle" id="btn-menu" type="button" aria-label="Abrir menu" 
+      style="background:transparent;border:none;color:var(--accent-gold);appearance:none;-webkit-appearance:none;padding:8px;">
+      <span style="pointer-events:auto;color:var(--accent-gold);font-size:28px;line-height:1;">☰</span>
+    </button>
     <a href="/" class="logo">
-      PANTANAL DA SORTE
+      <span class="logo-text">Pantanal da Sorte</span>
     </a>
-    <div class="icons">
-      <i id="btn-menu" class="fas fa-bars"></i>
+    <div class="cart-section" onclick="window.location.href='{% url 'meus_numeros' %}'">
       <i class="fas fa-shopping-cart"></i>
     </div>
   </header>
@@ -64,12 +89,21 @@
       <li><a href="{% url 'home' %}">🏠 Início</a></li>
       <li><a href="{% url 'sorteios' %}">🐊 Sorteios</a></li>
       <li><a href="{% url 'meus_numeros' %}">🍀 Meus números</a></li>
-      <li><a href="{% url 'cadastro' %}">🦜 Cadastro</a></li>
       <li><a href="{% url 'ganhadores' %}">🏆 Ganhadores</a></li>
       {% if not user.is_authenticated %}
-        <li><a href="{% url 'login' %}" class="btn btn-primary d-flex align-items-center justify-content-center" style="margin-top:10px;"><i class="fas fa-sign-in-alt me-2"></i> Entrar</a></li>
+        <!-- Botões Entrar e Cadastrar juntos -->
+        <li style="margin-top: 15px;">
+          <div style="display: flex; gap: 8px; flex-direction: column;">
+            <a href="{% url 'login' %}" class="btn btn-primary d-flex align-items-center justify-content-center">
+              <i class="fas fa-sign-in-alt me-2"></i> Entrar
+            </a>
+            <a href="{% url 'cadastro' %}" class="btn btn-warning d-flex align-items-center justify-content-center">
+              <i class="fas fa-user-plus me-2"></i> Cadastrar
+            </a>
+          </div>
+        </li>
       {% else %}
-        <li>
+        <li style="margin-top: 15px;">
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger d-flex align-items-center justify-content-center w-100"><i class="fas fa-sign-out-alt me-2"></i> Sair</button>
@@ -79,6 +113,7 @@
     </ul>
     <button id="btn-fechar-menu" class="btn btn-link mt-3">Fechar</button>
   </nav>
+
   <!-- Modal login -->
   <div id="loginModal" class="modal-backdrop glass">
     <div class="modal-container">
@@ -97,57 +132,44 @@
     </div>
   </div>
 
-  <main class="conteudo-centralizado py-4">
+  <main class="conteudo-centralizado py-4 flex-fill">
     {% block content %}{% endblock %}
   </main>
+  {% block footer %}
+  <footer class="site-footer mt-auto">
+    <div class="footer-inner text-center">
+      <div class="footer-social mb-2">
+        <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram" class="footer-icon"><i class="fab fa-instagram"></i></a>
+        <a href="https://wa.me/55" target="_blank" rel="noopener" aria-label="WhatsApp" class="footer-icon"><i class="fab fa-whatsapp"></i></a>
+      </div>
+      <div class="footer-credits">Desenvolvido por <span class="dev-name">Gui Costa</span></div>
+      <div class="footer-copy small">&copy; 2025 – Todos os direitos reservados</div>
+    </div>
+  </footer>
+  {% endblock %}
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
   <script>
-    AOS.init();
-
-    const loginModal = document.getElementById("loginModal");
-    const btnLoginMenu = document.getElementById("btnLoginMenu");
-    const menu = document.getElementById("menu-lateral");
-    const btnOpen = document.getElementById('btn-menu');
-    const btnClose = document.getElementById('btn-fechar-menu');
-
-    btnOpen.addEventListener('click', () => {
-      menu.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    });
-
-    btnClose.addEventListener('click', () => {
-      menu.classList.remove('open');
-      document.body.style.overflow = '';
-    });
-
-    document.addEventListener('click', (e) => {
-      if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btnOpen) {
-        menu.classList.remove('open');
-        document.body.style.overflow = '';
-      }
-    });
-
-    if (btnLoginMenu) {
-      btnLoginMenu.addEventListener("click", () => {
-        loginModal.style.display = "flex";
-        document.body.style.overflow = 'hidden';
-        if (menu) menu.classList.remove("open");
-      });
-    }
-
-    function fecharModal() {
-      loginModal.style.display = "none";
-      document.body.style.overflow = '';
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        fecharModal();
-      }
-    });
+  AOS.init();
+  <!-- Menu e overlay: a lógica de abrir/fechar e overlay é gerida por static/js/main.js para evitar handlers duplicados -->
   </script>
+  <script src="{% static 'js/main.js' %}"></script>
+  <script src="{% static 'js/payment.js' %}"></script>
+  <style>
+    /* Sticky layout */
+    .layout-root{min-height:100vh;display:flex;flex-direction:column;}
+    .flex-fill{flex:1 0 auto;}
+    .site-footer{background:rgba(0,0,0,.4);border-top:1px solid rgba(255,215,0,.25);padding:32px 16px 38px;margin-top:auto;position:relative;}
+    .footer-inner{max-width:960px;margin:0 auto;}
+    .footer-icon{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid #1e4ed8;border-radius:12px;margin:0 6px;color:#1e7bf5;font-size:1.15rem;text-decoration:none;transition:.25s;background:rgba(30,64,175,.1)}
+    .footer-icon:hover{background:#1e7bf5;color:#fff;box-shadow:0 0 14px -2px rgba(30,123,245,.8);}
+    .footer-credits{font-size:.95rem;color:#e5e5e5;font-weight:500;margin-bottom:4px;}
+    .dev-name{color:#4dff8c;font-weight:600;text-shadow:0 0 12px rgba(77,255,140,.55);animation:devGlow 2.5s ease-in-out infinite;}
+    @keyframes devGlow{0%,100%{opacity:1;filter:drop-shadow(0 0 2px rgba(77,255,140,.4));}50%{opacity:.55;filter:drop-shadow(0 0 8px rgba(77,255,140,.9));}}
+    .footer-copy{color:#bbb;margin-top:2px;}
+    @media (max-width:576px){.footer-icon{width:38px;height:38px;margin:0 4px;border-radius:10px;}}
+  </style>
 </body>
 </html>

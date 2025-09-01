@@ -104,3 +104,58 @@ class Numero(models.Model):
         # Feedback visual para admin
         if not self.rifa:
             raise ValidationError({'rifa': 'Selecione uma rifa válida.'})
+
+
+class Pedido(models.Model):
+    STATUS_CHOICES = [
+        ('pendente', 'Pendente'),
+        ('pago', 'Pago'),
+        ('expirado', 'Expirado'),
+        ('cancelado', 'Cancelado'),
+    ]
+    user = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL)
+    rifa = models.ForeignKey(Rifa, on_delete=models.CASCADE, related_name='pedidos')
+    quantidade = models.PositiveIntegerField()
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2)
+    numeros_reservados = models.TextField(blank=True, help_text='Lista de números reservados separados por vírgula.')
+    cpf = models.CharField(max_length=14)
+    nome = models.CharField(max_length=150)
+    telefone = models.CharField(max_length=20, blank=True)
+    pix_codigo = models.TextField(blank=True)
+    pix_txid = models.CharField(max_length=35, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pendente')
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Pedido #{self.id} - {self.rifa.titulo} ({self.status})"
+
+    def expirado(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at and self.status == 'pendente'
+
+
+class PremioBilhete(models.Model):
+    rifa = models.ForeignKey(Rifa, on_delete=models.CASCADE, related_name='premios')
+    numero_premiado = models.PositiveIntegerField(help_text='Número específico que concede o prêmio ao comprador.')
+    valor_premio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True)
+    descricao = models.CharField(max_length=120, blank=True)
+    ativo = models.BooleanField(default=True, help_text='Se desativado, não será mais concedido.')
+    ganho_por = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='premios_ganhos')
+    pedido = models.ForeignKey(Pedido, null=True, blank=True, on_delete=models.SET_NULL, related_name='premios_vinculados')
+    ganho_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('rifa', 'numero_premiado')
+        ordering = ['rifa', 'numero_premiado']
+
+    def __str__(self):
+        status = 'GANHO' if self.ganho_por else 'ATIVO' if self.ativo else 'INATIVO'
+        return f"Premio #{self.numero_premiado} ({status}) - {self.rifa.titulo}"

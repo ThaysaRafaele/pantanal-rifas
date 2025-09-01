@@ -145,8 +145,8 @@ def buscar_pedidos(request):
                 })
             return JsonResponse({'status': 'success', 'numeros': numeros_data})
         else:
-            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado para os dados informados.'})
-    
+            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado neste telefone.'})
+
     return JsonResponse({'status': 'error', 'message': 'Método inválido ou dados não fornecidos.'})
 
 def sorteios(request):
@@ -181,8 +181,8 @@ def buscar_numeros_por_telefone(request):
                 })
             return JsonResponse({'status': 'success', 'numeros': numeros_data})
         else:
-            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado para os dados informados.'})
-    
+            return JsonResponse({'status': 'not_found', 'message': 'Nenhum número encontrado neste telefone.'})
+
     return JsonResponse({'status': 'error', 'message': 'Método inválido ou dados não fornecidos.'})
 
 def raffle_detail(request, raffle_id):
@@ -399,6 +399,229 @@ def api_rifa_detail(request, rifa_id):
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def api_usuario_por_cpf(request):
+    """Busca usuário pelo CPF e retorna dados mascarados.
+    GET cpf=000.000.000-00 ou somente dígitos.
+    Retorno: {found:bool, nome, email, telefone}
+    """
+    cpf_raw = (request.GET.get('cpf') or '').strip()
+    import re
+    digits = re.sub(r'\D','', cpf_raw)
+    if len(digits) != 11:
+        return JsonResponse({'found': False, 'message': 'CPF inválido.'}, status=400)
+    formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+    try:
+        from rifa.models_profile import UserProfile
+        from django.db.models import Q
+        profile = UserProfile.objects.select_related('user').filter(Q(cpf=formatted)|Q(cpf=digits)).first()
+        if not profile:
+            # fallback normalizando tudo
+            for p in UserProfile.objects.select_related('user').all():
+                if re.sub(r'\D','', p.cpf or '') == digits:
+                    profile = p; break
+        if not profile:
+            return JsonResponse({'found': False, 'message': 'Não existe conta cadastrada neste CPF.'})
+        user = profile.user
+        nome = (user.first_name or '').strip() or user.username
+        email = (user.email or '').strip()
+        telefone = (getattr(profile,'telefone','') or '').strip()
+        def mask_email(e):
+            if not e or '@' not in e: return ''
+            u,d = e.split('@',1)
+            return (u[0] + '*'*(len(u)-1)) + '@' + d if len(u)>1 else '*'+'@'+d
+        def mask_phone(p):
+            if not p: return ''
+            digs = re.sub(r'\D','', p)
+            if len(digs) <= 7: return digs
+            return digs[:4] + '*'*(len(digs)-7) + digs[-3:]
+        return JsonResponse({
+            'found': True,
+            'nome': nome,
+            'email': mask_email(email),
+            'telefone': mask_phone(telefone)
+        })
+    except Exception:
+        return JsonResponse({'found': False, 'message': 'Erro ao buscar CPF.'}, status=500)
+
+from django.utils import timezone
+from django.db import transaction
+import uuid, decimal, re, random
+from .models import Pedido, PremioBilhete
+@csrf_exempt
+def criar_pedido(request):
+    """Cria pedido reservando bilhetes aleatórios.
+    POST: rifa_id, cpf, quantidade
+    Retorna: {success, pedido_id, redirect, premios_ganhos:[{numero,valor}]}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error':'Método inválido'}, status=405)
+    try:
+        rifa_id = request.POST.get('rifa_id')
+        cpf_raw = (request.POST.get('cpf') or '').strip()
+        qtd = int(request.POST.get('quantidade','0'))
+        if qtd <= 0:
+            return JsonResponse({'error':'Quantidade inválida'}, status=400)
+        rifa = get_object_or_404(Rifa, id=rifa_id)
+        # Sanitiza CPF
+        digits = re.sub(r'\D','', cpf_raw)
+        if len(digits) != 11:
+            return JsonResponse({'error':'CPF inválido'}, status=400)
+        cpf_fmt = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+        # Localiza usuário pelo CPF (UserProfile)
+        from rifa.models_profile import UserProfile
+        profile = UserProfile.objects.select_related('user').filter(cpf__in=[cpf_fmt, digits]).first()
+        if not profile:
+            # varredura fallback
+            for p in UserProfile.objects.select_related('user').all():
+                if re.sub(r'\D','', p.cpf or '') == digits:
+                    profile = p; break
+        if not profile:
+            return JsonResponse({'error':'CPF não cadastrado'}, status=400)
+        user = profile.user
+        preco = decimal.Decimal(rifa.preco)
+        total_max = rifa.quantidade_numeros
+        if total_max <= 0:
+            return JsonResponse({'error':'Rifa sem limite de números configurado.'}, status=400)
+        with transaction.atomic():
+            # Conjunto de ocupados (reservado, pago ou já atribuído livremente a outro pedido em andamento)
+            ocupados = set(Numero.objects.select_for_update(skip_locked=True)
+                           .filter(rifa=rifa)
+                           .exclude(status='livre')
+                           .values_list('numero', flat=True))
+            # Inclui os livres existentes (podem ser reutilizados se ainda livres)
+            livres_existentes = {n.numero: n for n in Numero.objects.filter(rifa=rifa, status='livre')}
+            disponiveis = [n for n in range(1, total_max+1) if n not in ocupados]
+            if len(disponiveis) < qtd:
+                return JsonResponse({'error':'Não há bilhetes suficientes disponíveis.'}, status=400)
+            escolhidos = random.sample(disponiveis, qtd)
+            objetos = []
+            for numero in escolhidos:
+                obj = livres_existentes.get(numero)
+                if not obj:
+                    obj = Numero(rifa=rifa, numero=numero, status='livre')
+                    obj.save()
+                objetos.append(obj)
+            numeros_reservados = []
+            for bilhete in objetos:
+                bilhete.status='reservado'
+                bilhete.comprador_nome = user.first_name or user.username
+                bilhete.comprador_email = user.email
+                bilhete.comprador_cpf = digits
+                bilhete.comprador_telefone = getattr(profile, 'telefone', '')
+                bilhete.save()
+                numeros_reservados.append(str(bilhete.numero))
+        valor_total = preco * qtd
+        txid = uuid.uuid4().hex[:25]
+        # Payload PIX simples placeholder (pode ser substituído por geração EMV se quiser depois)
+        pix_codigo = f"TXID:{txid}|RIFA:{rifa.id}|TOTAL:{valor_total:.2f}"
+        pedido = Pedido.objects.create(
+            user=user,
+            rifa=rifa,
+            quantidade=qtd,
+            valor_unitario=preco,
+            valor_total=valor_total,
+            numeros_reservados=','.join(numeros_reservados),
+            cpf=cpf_fmt,
+            nome=user.first_name or user.username,
+            telefone=getattr(profile,'telefone',''),
+            pix_codigo=pix_codigo,
+            pix_txid=txid,
+            expires_at=timezone.now()+timezone.timedelta(hours=1)
+        )
+        # Checa prêmios ganhos
+        numeros_int = [int(x) for x in numeros_reservados]
+        premios_ativos = PremioBilhete.objects.filter(rifa=rifa, ativo=True, ganho_por__isnull=True, numero_premiado__in=numeros_int)
+        premios_ganhos = []
+        if premios_ativos.exists():
+            for premio in premios_ativos:
+                premio.ganho_por = user
+                premio.pedido = pedido
+                premio.ganho_em = timezone.now()
+                premio.save(update_fields=['ganho_por','pedido','ganho_em'])
+                premios_ganhos.append({'numero':premio.numero_premiado,'valor':float(premio.valor_premio)})
+        return JsonResponse({'success':True,'pedido_id':pedido.id,'redirect':f"/pedido/{pedido.id}/pix/",'premios_ganhos':premios_ganhos})
+    except Exception as e:
+        return JsonResponse({'error':str(e)}, status=500)
+
+def pedido_pix(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    if pedido.expirado():
+        pedido.status='expirado'
+        pedido.save(update_fields=['status'])
+    return render(request, 'rifa/pedido_pix.html', {'pedido':pedido})
+
+def api_premios_rifa(request, rifa_id):
+    rifa = get_object_or_404(Rifa, id=rifa_id)
+    premios = [{
+        'numero': p.numero_premiado,
+        'valor': float(p.valor_premio),
+        'ganho': bool(p.ganho_por),
+    } for p in rifa.premios.all().order_by('numero_premiado')]
+    return JsonResponse({'premios': premios})
+
+@login_required
+@csrf_exempt
+def excluir_premio(request, rifa_id, premio_id):
+    if request.method not in ['POST','DELETE']:
+        return JsonResponse({'error':'Método não permitido'}, status=405)
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error':'Sem permissão'}, status=403)
+    premio = get_object_or_404(PremioBilhete, id=premio_id, rifa_id=rifa_id)
+    if premio.ganho_por:
+        return JsonResponse({'error':'Já ganho; não pode excluir.'}, status=400)
+    premio.delete()
+    rifa = get_object_or_404(Rifa, id=rifa_id)
+    premios = [{
+        'id': p.id,
+        'numero': p.numero_premiado,
+        'valor': str(p.valor_premio),
+        'ativo': p.ativo,
+        'ganho_por': p.ganho_por.username if p.ganho_por else None
+    } for p in rifa.premios.all().order_by('numero_premiado')]
+    return JsonResponse({'success':True,'premios':premios})
+
+@login_required
+@csrf_exempt
+def definir_premio(request, rifa_id):
+    rifa = get_object_or_404(Rifa, id=rifa_id)
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error':'Sem permissão'}, status=403)
+    if request.method != 'POST':
+        premios = [{
+            'id': p.id,
+            'numero': p.numero_premiado,
+            'valor': str(p.valor_premio),
+            'ativo': p.ativo,
+            'ganho_por': p.ganho_por.username if p.ganho_por else None
+        } for p in rifa.premios.all()]
+        return JsonResponse({'premios': premios})
+    try:
+        numero = int(request.POST.get('numero_premiado',''))
+        if numero <=0:
+            return JsonResponse({'error':'Número inválido'}, status=400)
+        from decimal import Decimal
+        valor_raw = (request.POST.get('valor_premio') or '').strip().replace(',','.')
+        if not valor_raw:
+            return JsonResponse({'error':'Valor obrigatório'}, status=400)
+        valor = Decimal(valor_raw)
+        premio, created = PremioBilhete.objects.get_or_create(rifa=rifa, numero_premiado=numero, defaults={'valor_premio':valor})
+        if not created:
+            if premio.ganho_por:
+                return JsonResponse({'error':'Já ganho; não altera.'}, status=400)
+            premio.valor_premio = valor
+            premio.ativo = True
+            premio.save(update_fields=['valor_premio','ativo'])
+        premios = [{
+            'id': p.id,
+            'numero': p.numero_premiado,
+            'valor': str(p.valor_premio),
+            'ativo': p.ativo,
+            'ganho_por': p.ganho_por.username if p.ganho_por else None
+        } for p in rifa.premios.all().order_by('numero_premiado')]
+        return JsonResponse({'success':True,'id':premio.id,'created':created,'premios':premios})
+    except Exception as e:
+        return JsonResponse({'error':str(e)}, status=500)
 
 
 @login_required

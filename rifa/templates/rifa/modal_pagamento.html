@@ -1,0 +1,27 @@
+<div class="payment-backdrop" id="paymentBackdrop" style="display:none;">
+  <div class="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+    <button class="pay-close" type="button" aria-label="Fechar" onclick="closePaymentModal()">×</button>
+    <h3 id="payTitle" class="pay-title">Finalize sua compra</h3>
+    <p class="pay-total">Valor total: <span id="payValorTotal">R$ 0,00</span></p>
+    <form id="payForm" onsubmit="return submitReserva(event)">
+      <div class="mb-3">
+        <label class="form-label small text-uppercase">CPF <span class="text-danger">(obrigatório)</span></label>
+        <input type="text" maxlength="14" placeholder="000.000.000-00" class="form-control" id="payCpf" required>
+      </div>
+
+      <div id="payUserBox" class="p-3 rounded mb-3" style="display:none;background:#222;border:1px solid #333;">
+        <div class="d-flex align-items-center mb-2" style="gap:.6rem;">
+          <i class="fas fa-user text-white-50"></i>
+          <strong id="payUserNome" class="text-white small" style="font-size:1rem;">—</strong>
+        </div>
+        <div class="small text-muted" id="payUserEmail"></div>
+        <div class="small text-muted" id="payUserTelefone"></div>
+      </div>
+
+      <div id="payUserNotFound" class="alert alert-warning py-2 mb-3" style="display:none;font-size:.85rem;">Não existe conta cadastrada neste CPF. <a href="/cadastro/" class="alert-link">Faça seu cadastro</a> para comprar números.</div>
+
+      <button class="btn btn-success w-100 py-2 mb-2" id="btnReservar" type="submit" disabled>Reservar bilhetes</button>
+      <button type="button" id="btnOutroCadastro" class="btn btn-link w-100 p-0" style="text-decoration:underline;display:none;" onclick="resetarCpfPagamento()">Usar outro cadastro</button>
+    </form>
+  </div>
+</div>

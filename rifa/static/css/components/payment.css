@@ -1,0 +1,13 @@
+.payment-backdrop{position:fixed;inset:0;background:rgba(15,20,30,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px;}
+.payment-modal{background:#121416;border:1px solid rgba(255,255,255,.08);width:100%;max-width:540px;border-radius:22px;padding:34px 40px 40px;box-shadow:0 10px 40px -10px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04);position:relative;font-family:'Poppins',sans-serif;}
+.payment-modal:before{content:"";position:absolute;inset:0;border-radius:22px;padding:1px;background:linear-gradient(140deg,rgba(0,255,170,.5),rgba(0,160,110,.15));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;}
+.pay-close{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);width:38px;height:38px;border-radius:12px;color:#fff;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.35s;}
+.pay-close:hover{background:#ff4444;border-color:#ff4444;box-shadow:0 0 12px -2px rgba(255,68,68,.7);}
+.pay-title{margin:0 0 14px;font-weight:600;font-size:1.55rem;letter-spacing:.5px;color:#fff;}
+.pay-total{margin:0 0 22px;font-size:.95rem;font-weight:500;color:#1dd27c;background:rgba(29,210,124,.08);padding:10px 14px;border-radius:10px;display:inline-block;box-shadow:0 0 0 1px rgba(29,210,124,.25),0 0 18px -6px rgba(29,210,124,.55);}
+#payForm .form-label{font-size:.75rem;font-weight:600;letter-spacing:.7px;color:#bbb;}
+#payForm input.form-control{background:#181b20!important;border:1px solid rgba(255,255,255,.15);color:#fff;height:48px;border-radius:12px;font-size:.95rem;}
+#payForm input.form-control:focus{border-color:#1dd27c;box-shadow:0 0 0 3px rgba(29,210,124,.35);}
+#btnReservar{background:#0f6f43;border:none;font-weight:600;letter-spacing:.5px;font-size:.95rem;border-radius:12px;box-shadow:0 6px 22px -6px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.05);transition:.35s;}
+#btnReservar:hover{background:#139156;box-shadow:0 4px 30px -8px rgba(19,145,86,.9),0 0 0 1px rgba(255,255,255,.07);}
+@media (max-width:600px){.payment-modal{padding:30px 26px 36px;border-radius:18px;}.pay-title{font-size:1.3rem;}}

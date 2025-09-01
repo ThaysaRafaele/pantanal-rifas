@@ -1,0 +1,200 @@
+/* Header com logo centralizada - Sobrescreve outros estilos */
+.navbar-custom {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0,0,0,0.95) !important;
+  backdrop-filter: blur(10px);
+  padding: 15px 20px !important;
+  position: relative !important;
+  min-height: 70px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Logo centralizada */
+.navbar-custom .logo {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  z-index: 10;
+}
+
+.logo-text {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: bold !important;
+  font-size: 1.8rem !important;
+  background: linear-gradient(90deg, #FFD700, #FFB400, #FFD700) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  white-space: nowrap !important;
+  text-shadow: 0px 0px 8px rgba(255, 215, 0, 0.8),
+               0px 0px 12px rgba(255, 170, 0, 0.6) !important;
+}
+
+.logo-icon svg {
+  fill: url(#gold-gradient) !important;
+  filter: drop-shadow(0px 0px 6px rgba(255, 200, 0, 0.7)) !important;
+  width: 38px !important;
+  height: 38px !important;
+}
+
+/* Ícones laterais próximos da logo */
+.menu-toggle {
+  position: absolute !important;
+  left: calc(50% - 250px) !important;
+  color: var(--accent-gold) !important;
+  font-size: 32px !important;
+  cursor: pointer !important;
+  /* Garantir que o botão fique acima da overlay quando aberta */
+  z-index: 99999 !important;
+  padding: 8px !important;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  background: transparent !important;
+  border: none !important;
+  appearance: none !important;
+}
+
+.menu-toggle span {
+  font-size: 32px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  z-index: 100000 !important;
+  color: var(--accent-gold) !important;
+  display: inline-block !important;
+}
+
+.menu-toggle:hover {
+  background: rgba(255, 215, 0, 0.06) !important;
+  transform: scale(1.08) !important;
+  color: #FFD700 !important;
+}
+
+.cart-section {
+  position: absolute !important;
+  right: calc(50% - 250px) !important;
+  color: white !important;
+  font-size: 32px !important;
+  cursor: pointer !important;
+  z-index: 99998 !important;
+  padding: 8px !important;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.cart-section span,
+.cart-section i {
+  font-size: 32px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  z-index: 100000 !important;
+}
+
+.cart-section:hover {
+  background: rgba(255, 215, 0, 0.15) !important;
+  transform: scale(1.2) !important;
+}
+
+.cart-section:hover span {
+  color: #FFD700 !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .logo-text {
+    font-size: 1.4rem !important;
+  }
+  
+  .menu-toggle,
+  .cart-section {
+    font-size: 28px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  
+  .menu-toggle span,
+  .cart-section span {
+    font-size: 28px !important;
+  }
+  
+  .menu-toggle {
+    left: calc(50% - 200px) !important;
+  }
+  
+  .cart-section {
+    right: calc(50% - 200px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 1.2rem !important;
+  }
+  
+  .menu-toggle,
+  .cart-section {
+    font-size: 24px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+  
+  .menu-toggle span,
+  .cart-section span {
+    font-size: 24px !important;
+  }
+  
+  .menu-toggle {
+    left: calc(50% - 150px) !important;
+  }
+  
+  .cart-section {
+    right: calc(50% - 150px) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .logo-text {
+    font-size: 1rem !important;
+  }
+  
+  .menu-toggle,
+  .cart-section {
+    font-size: 20px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+  
+  .menu-toggle span,
+  .cart-section span {
+    font-size: 20px !important;
+  }
+  
+  .menu-toggle {
+    left: calc(50% - 120px) !important;
+  }
+  
+  .cart-section {
+    right: calc(50% - 120px) !important;
+  }
+}

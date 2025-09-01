@@ -1,27 +1,70 @@
 
 from django.contrib import admin
-from .models import Rifa, Numero, NumeroRifa
+from .models import Rifa, Numero, NumeroRifa, PremioBilhete
 from .admin_numero import NumeroAdmin
 from django.utils.html import format_html
 import csv
 from django.http import HttpResponse
 from .models_profile import UserProfile
+from django.contrib.auth.models import User
+
+# Inline para editar UserProfile diretamente dentro do User
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    fk_name = 'user'
+    extra = 1  # mostra formulário para criar quando não existe
+    max_num = 1
+    fieldsets = (
+        ('Dados Pessoais', {
+            'fields': ('nome_social','cpf','data_nascimento','telefone')
+        }),
+        ('Endereço', {
+            'fields': ('cep','logradouro','numero','bairro','complemento','uf','cidade','referencia')
+        }),
+    )
+
+class UserAdmin(admin.ModelAdmin):
+    inlines = [UserProfileInline]
+    list_display = ('username','email','first_name','cpf','is_staff')
+    search_fields = ('username','email','first_name','profile__cpf')
+    list_filter = ('is_staff','is_superuser','is_active')
+    fieldsets = (
+        (None, {'fields': ('username','password')}),
+        ('Informações Pessoais', {'fields': ('first_name','last_name','email')}),
+        ('Permissões', {'fields': ('is_active','is_staff','is_superuser','groups','user_permissions')}),
+        ('Datas Importantes', {'fields': ('last_login','date_joined')}),
+    )
+    readonly_fields = ('last_login','date_joined')
+
+    def cpf(self, obj):
+        return getattr(getattr(obj, 'profile', None), 'cpf', '')
+    cpf.short_description = 'CPF'
+
+    def get_inline_instances(self, request, obj=None):
+        # Garante criação automática do perfil se não existir ao abrir a página
+        if obj and not hasattr(obj, 'profile'):
+            UserProfile.objects.create(user=obj, cpf='000.000.000-00', data_nascimento='', telefone='', cep='', logradouro='', numero='', bairro='', uf='', cidade='')
+        return super().get_inline_instances(request, obj)
+
+# Desregistrar User padrão e registrar novo
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
+admin.site.register(User, UserAdmin)
 
 # Admin para UserProfile
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'nome_social', 'cpf', 'telefone', 'cidade', 'uf')
+    list_display = ('user', 'cpf', 'telefone', 'cidade', 'uf')
     search_fields = ('user__username', 'cpf', 'telefone', 'cidade', 'uf')
+    fieldsets = (
+        (None, {'fields': ('user','nome_social','cpf','data_nascimento','telefone')}),
+        ('Endereço', {'fields': ('cep','logradouro','numero','bairro','complemento','uf','cidade','referencia')}),
+    )
 
-from django.contrib import admin
-from .models import Rifa, Numero, NumeroRifa
-from .admin_numero import NumeroAdmin
-from django.utils.html import format_html
-import csv
-from django.http import HttpResponse
-from .models_profile import UserProfile
-
- # Removido registro duplicado para evitar AlreadyRegistered
+ # (limpo) imports duplicados removidos
 
 @admin.register(Rifa)
 class RifaAdmin(admin.ModelAdmin):
@@ -146,3 +189,13 @@ class NumeroRifaAdmin(admin.ModelAdmin):
     list_display = ('numero', 'rifa', 'reservado_por', 'reservado_em')
     list_filter = ('rifa',)
     search_fields = ('numero', 'rifa__titulo', 'reservado_por__username')
+
+@admin.register(PremioBilhete)
+class PremioBilheteAdmin(admin.ModelAdmin):
+    list_display = ('rifa','numero_premiado','valor_premio','ativo','ganho_por','ganho_em')
+    list_filter = ('rifa','ativo')
+    search_fields = ('rifa__titulo','numero_premiado','ganho_por__username')
+    readonly_fields = ('ganho_por','ganho_em','pedido','criado_em','atualizado_em')
+    actions = ['ativar','desativar']
+    def ativar(self,request,queryset): queryset.update(ativo=True)
+    def desativar(self,request,queryset): queryset.update(ativo=False)

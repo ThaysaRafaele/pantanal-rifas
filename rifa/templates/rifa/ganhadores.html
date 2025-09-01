@@ -2,48 +2,161 @@
 {% block title %}Ganhadores{% endblock %}
 {% block content %}
 
-<section>
-  <h2 class="mb-4 text-success" data-aos="fade-down"><i class="fas fa-trophy me-2"></i> Ganhadores das Rifas</h2>
-  <p class="mb-4 text-white" data-aos="fade-down" data-aos-delay="100">Confira os sorteios encerrados e seus ganhadores!</p>
+<section class="container-fluid py-5">
+  <!-- Header elegante -->
+  <div class="text-center mb-5" data-aos="fade-down">
+    <div class="d-inline-block position-relative">
+      <h1 class="display-4 fw-bold text-white mb-2">
+        <i class="fas fa-crown text-warning me-3" style="font-size: 2.5rem;"></i>
+        Ganhadores
+        <i class="fas fa-trophy text-warning ms-3" style="font-size: 2.5rem;"></i>
+      </h1>
+      <div class="golden-line mx-auto" style="width: 200px; height: 3px; background: linear-gradient(90deg, #ffd700, #ffed4e, #ffd700); border-radius: 10px;"></div>
+    </div>
+    <p class="lead text-white-50 mt-3" data-aos="fade-up" data-aos-delay="200">
+      🎉 Confira os grandes vencedores das nossas rifas encerradas!
+    </p>
+  </div>
 
-  <div class="card-grid" data-aos="fade-up" data-aos-delay="200">
+  <!-- Grid de ganhadores -->
+  <div class="row g-4" data-aos="fade-up" data-aos-delay="300">
     {% for rifa in rifas_encerradas %}
-      <div class="card">
-        {% if rifa.imagem %}
-          <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}">
-        {% else %}
-          <img src="https://via.placeholder.com/350x220?text=Sem+Imagem" alt="Sem imagem">
-        {% endif %}
-        <div class="card-content">
-          <h3 class="text-white">{{ rifa.titulo }}</h3>
-          <p class="text-white">{{ rifa.descricao|truncatewords:15 }}</p>
-          <div class="preco text-white">Prêmio: R$ {{ rifa.preco }}</div>
-          <div class="mt-3">
-            <span class="fw-bold text-white d-block">Encerrada em {{ rifa.data_encerramento|date:'d/m/Y H:i' }}</span>
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card glass-winner h-100 border-0 overflow-hidden position-relative">
+          <!-- Badge de encerrada -->
+          <div class="position-absolute top-0 end-0 m-3 z-index-2">
+            <span class="badge bg-success fs-6 px-3 py-2 rounded-pill">
+              <i class="fas fa-check-circle me-1"></i>
+              Encerrada
+            </span>
+          </div>
+          
+          <!-- Imagem da rifa -->
+          <div class="position-relative overflow-hidden" style="height: 220px;">
+            {% if rifa.imagem %}
+              <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="w-100 h-100 object-fit-cover">
+            {% else %}
+              <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+                <i class="fas fa-image text-white-50" style="font-size: 3rem;"></i>
+              </div>
+            {% endif %}
+            <!-- Overlay gradiente -->
+            <div class="position-absolute bottom-0 start-0 w-100 h-50" style="background: linear-gradient(transparent, rgba(0,0,0,0.8));"></div>
           </div>
 
-          <div class="mt-3">
-            <span class="fw-bold text-success d-block">🎉 Ganhador:</span>
-            {% if rifa.ganhador_nome %}
-              <div class="d-flex align-items-center justify-content-center gap-2 my-2">
-                {% if rifa.ganhador_foto %}
-                  <img src="{{ rifa.ganhador_foto.url }}" alt="Foto do ganhador" class="rounded-circle border" style="width:48px;height:48px;object-fit:cover;">
-                {% else %}
-                  <img src="https://via.placeholder.com/48x48?text=Foto" alt="Sem foto" class="rounded-circle border" style="width:48px;height:48px;object-fit:cover;">
-                {% endif %}
-                <span class="text-success fw-bold">{{ rifa.ganhador_nome }}</span>
+          <!-- Conteúdo do card -->
+          <div class="card-body p-4">
+            <!-- Título e descrição -->
+            <h3 class="card-title text-white fw-bold mb-3 fs-4">{{ rifa.titulo }}</h3>
+            <p class="text-white-50 mb-3">{{ rifa.descricao|truncatewords:12 }}</p>
+            
+            <!-- Prêmio -->
+            <div class="golden-prize-box p-3 rounded-3 mb-4 text-center">
+              <div class="text-warning fw-bold mb-1">💰 PRÊMIO</div>
+              <div class="h4 text-white fw-bold mb-0">R$ {{ rifa.preco }}</div>
+            </div>
+
+            <!-- Data de encerramento -->
+            <div class="d-flex align-items-center mb-4 text-white-50">
+              <i class="fas fa-calendar-check me-2 text-warning"></i>
+              <small>Encerrada em {{ rifa.data_encerramento|date:'d/m/Y às H:i' }}</small>
+            </div>
+
+            <!-- Ganhador -->
+            <div class="winner-section">
+              <div class="d-flex align-items-center mb-3">
+                <i class="fas fa-star text-warning me-2"></i>
+                <h5 class="text-warning fw-bold mb-0">GANHADOR</h5>
               </div>
-              <span class="text-white">Bilhete sorteado: <b>{{ rifa.ganhador_numero }}</b></span>
-            {% else %}
-              <span class="text-danger">Ainda não definido</span>
-            {% endif %}
+              
+              {% if rifa.ganhador_nome %}
+                <div class="glass-winner-info p-3 rounded-3">
+                  <div class="d-flex align-items-center gap-3 mb-2">
+                    {% if rifa.ganhador_foto %}
+                      <img src="{{ rifa.ganhador_foto.url }}" alt="Foto do ganhador" 
+                           class="rounded-circle border border-warning border-2 winner-photo" 
+                           style="width: 50px; height: 50px; object-fit: cover;">
+                    {% else %}
+                      <div class="rounded-circle border border-warning border-2 d-flex align-items-center justify-content-center"
+                           style="width: 50px; height: 50px; background: rgba(255,215,0,0.1);">
+                        <i class="fas fa-user text-warning"></i>
+                      </div>
+                    {% endif %}
+                    <div>
+                      <div class="text-white fw-bold">{{ rifa.ganhador_nome }}</div>
+                      <div class="text-warning small">🎯 Bilhete {{ rifa.ganhador_numero }}</div>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <div class="glass-winner-info p-3 rounded-3 text-center">
+                  <i class="fas fa-clock text-warning-50 mb-2" style="font-size: 2rem;"></i>
+                  <div class="text-warning">Ganhador em breve</div>
+                </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
     {% empty %}
-      <div class="alert alert-warning text-center">Nenhuma rifa encerrada ainda.</div>
+      <div class="col-12">
+        <div class="glass-login text-center py-5">
+          <i class="fas fa-trophy text-warning mb-4" style="font-size: 4rem; opacity: 0.3;"></i>
+          <h3 class="text-white mb-3">Nenhuma rifa encerrada ainda</h3>
+          <p class="text-white-50">Os primeiros ganhadores aparecerão aqui em breve!</p>
+          <a href="{% url 'sorteios' %}" class="btn btn-outline-warning mt-3">
+            <i class="fas fa-ticket-alt me-2"></i>
+            Ver Rifas Ativas
+          </a>
+        </div>
+      </div>
     {% endfor %}
   </div>
 </section>
+
+<!-- CSS customizado para a página de ganhadores -->
+<style>
+.glass-winner {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-winner:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.1);
+}
+
+.golden-prize-box {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.glass-winner-info {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.winner-photo {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.z-index-2 {
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .display-4 {
+    font-size: 2rem;
+  }
+  
+  .fas.fa-crown, .fas.fa-trophy {
+    font-size: 1.5rem !important;
+  }
+}
+</style>
 
 {% endblock %}

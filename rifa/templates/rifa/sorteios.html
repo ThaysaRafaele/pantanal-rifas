@@ -79,7 +79,7 @@
               <!-- Imagem com overlay -->
               <div class="card-image-container">
                 {% if rifa.imagem %}
-                  <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="card-image">
+                  <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="card-image" loading="lazy" decoding="async">
                 {% else %}
                   <div class="placeholder-image">
                     <i class="fas fa-gift"></i>
@@ -119,9 +119,9 @@
 
                 <!-- Informações adicionais -->
                 <div class="card-info">
-                  <div class="info-item">
-                    <i class="fas fa-ticket-alt"></i>
-                    <span>{{ rifa.quantidade_numeros }} números</span>
+                  <div class="info-item info-premiado">
+                    <i class="fas fa-star"></i>
+                    <span>COM BILHETE PREMIADO</span>
                   </div>
                   {% if rifa.data_encerramento %}
                   <div class="info-item">
@@ -361,14 +361,6 @@
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
-                <label for="edit_quantidade_numeros" class="form-label">Quantidade de Números</label>
-                <input type="number" class="form-control bg-dark text-light border-secondary" 
-                       id="edit_quantidade_numeros" name="quantidade_numeros" required readonly>
-                <div class="form-text text-muted">Não é possível alterar após criação</div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
                 <label for="edit_data_encerramento" class="form-label">Data de Encerramento</label>
                 <input type="datetime-local" class="form-control bg-dark text-light border-secondary" 
                        id="edit_data_encerramento" name="data_encerramento">
@@ -388,6 +380,26 @@
                    id="edit_imagem" name="imagem" accept="image/*">
             <div class="form-text text-muted">Deixe vazio para manter a imagem atual</div>
           </div>
+
+          <hr class="border-secondary">
+          <h6 class="text-success mb-3 d-flex align-items-center" style="letter-spacing:.5px;"><i class="fas fa-ticket-alt me-2"></i>Bilhetes Premiados</h6>
+          <div id="formPremioModal" class="row gy-2 align-items-end mb-3">
+            <div class="col-12 col-md-3">
+              <label class="form-label small mb-1 text-uppercase text-muted">Número Premiado</label>
+              <input type="number" min="1" class="form-control form-control-sm bg-dark text-light border-secondary" id="premioNumeroModal" placeholder="Ex: 25">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small mb-1 text-uppercase text-muted">Valor (R$)</label>
+              <input type="number" step="0.01" min="0.01" class="form-control form-control-sm bg-dark text-light border-secondary" id="premioValorModal" placeholder="0,00">
+            </div>
+            <div class="col-12 col-md-3">
+              <button class="btn btn-success w-100 btn-sm mt-4" type="button" onclick="definirPremioModal(event)"><i class="fas fa-plus me-1"></i>Adicionar</button>
+            </div>
+          </div>
+          <div id="listaPremiosModal" class="small list-group mb-2" style="max-height:220px;overflow:auto;">
+            <div class="list-group-item bg-dark text-muted border-secondary">Nenhum prêmio ainda</div>
+          </div>
+          <p class="text-muted small mb-0">Ao adicionar um número ele passa a valer imediatamente como premiado.</p>
         </div>
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -683,11 +695,14 @@ function editarRifa(rifaId) {
       // Reabilitar botões
       setAdminButtonsState(true);
       
-      // Preencher o formulário de edição
-      document.getElementById('edit_titulo').value = data.titulo || '';
-      document.getElementById('edit_preco').value = data.preco || '';
-      document.getElementById('edit_quantidade_numeros').value = data.quantidade_numeros || '';
-      document.getElementById('edit_descricao').value = data.descricao || '';
+  // Preencher o formulário de edição
+  document.getElementById('edit_titulo').value = data.titulo || '';
+  document.getElementById('edit_preco').value = data.preco || '';
+  document.getElementById('edit_descricao').value = data.descricao || '';
+
+  // Guardar id atual para uso nas funções de prêmio
+  window.__rifaEditandoId = rifaId;
+  carregarPremiosModal();
       
       // Data de encerramento
       if (data.data_encerramento) {
@@ -858,32 +873,105 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
 });
 
 // Função para mostrar notificações
-function showNotification(message, type = 'info') {
-  // Criar elemento de notificação
-  const notification = document.createElement('div');
-  notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
-  notification.style.cssText = `
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    max-width: 350px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  `;
-  
-  notification.innerHTML = `
-    <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-  
-  document.body.appendChild(notification);
-  
-  // Remover automaticamente após 5 segundos
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.remove();
+
+// ==== Bilhetes Premiados no Modal (versão corrigida) ====
+async function definirPremioModal(e){
+  if(e) e.preventDefault();
+  if(!window.__rifaEditandoId) return false;
+  const numero=document.getElementById('premioNumeroModal').value.trim();
+  const valor=document.getElementById('premioValorModal').value.trim();
+  const box=document.getElementById('listaPremiosModal');
+  const form=new FormData();
+  form.append('numero_premiado',numero);
+  form.append('valor_premio',valor);
+  box.innerHTML='<div class="list-group-item bg-dark text-info border-secondary p-2"><i class="fas fa-spinner fa-spin"></i></div>';
+  try {
+    const resp=await fetch(`/api/rifa/${window.__rifaEditandoId}/definir-premio/`,{method:'POST',body:form});
+    const data=await resp.json();
+    if(data.success){
+      document.getElementById('premioNumeroModal').value='';
+      document.getElementById('premioValorModal').value='';
+      if(data.premios){
+        renderListaPremios(data.premios);
+      } else {
+        carregarPremiosModal();
+      }
+      // Emite sinal para outras páginas atualizarem (listeners em raffle_detail via polling/localStorage)
+      try { localStorage.setItem('premios_updated_rifa_'+window.__rifaEditandoId, Date.now().toString()); } catch(_e){}
+    } else {
+      box.innerHTML='<div class="list-group-item bg-dark text-danger border-secondary">'+(data.error||'Erro ao salvar')+'</div>';
     }
-  }, 5000);
+  } catch(err){
+    box.innerHTML='<div class="list-group-item bg-dark text-danger border-secondary">Falha na requisição</div>';
+  }
+  return false;
+}
+async function carregarPremiosModal(){
+  if(!window.__rifaEditandoId) return;
+  const box=document.getElementById('listaPremiosModal');
+  if(!box) return;
+  box.innerHTML='<div class="list-group-item bg-dark text-info border-secondary p-2"><i class="fas fa-spinner fa-spin"></i></div>';
+  try {
+    const resp=await fetch(`/api/rifa/${window.__rifaEditandoId}/definir-premio/`);
+    const data=await resp.json();
+    if(data.premios){
+      renderListaPremios(data.premios);
+    } else {
+      box.innerHTML='<div class="list-group-item bg-dark text-danger border-secondary">Erro ao carregar</div>';
+    }
+  } catch(err){
+    box.innerHTML='<div class="list-group-item bg-dark text-danger border-secondary">Falha ao carregar</div>';
+  }
+}
+
+function renderListaPremios(lista){
+  const box=document.getElementById('listaPremiosModal');
+  if(!box) return;
+  box.innerHTML=lista.map(p=>{
+    const st=p.ganho_por?'<span class="badge bg-warning text-dark">Ganho</span>':'<span class="badge bg-success">Premiado</span>';
+    const btnDel = !p.ganho_por ? `<button type='button' class='btn btn-sm btn-outline-danger ms-2' style='--bs-btn-padding-y:0;. --bs-btn-padding-x:.35rem;font-size:.65rem;' title='Excluir' onclick='excluirPremio(${p.id})'>&times;</button>` : '';
+    return `<div class='list-group-item d-flex align-items-center bg-dark text-light border-secondary'>
+      <span class='fw-semibold me-3'>#${String(p.numero).padStart(2,'0')}</span>
+      <span class='text-info me-auto'>R$ ${parseFloat(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+      ${st}${btnDel}
+    </div>`
+  }).join('')||'<div class="list-group-item bg-dark text-muted border-secondary">Nenhum prêmio definido</div>';
+}
+
+async function excluirPremio(id){
+  if(!window.__rifaEditandoId) return;
+  if(!confirm('Remover este bilhete premiado?')) return;
+  const box=document.getElementById('listaPremiosModal');
+  const placeholder = document.createElement('div');
+  placeholder.className='list-group-item bg-dark text-info border-secondary p-2';
+  placeholder.innerHTML='<i class="fas fa-spinner fa-spin"></i> Excluindo...';
+  box.prepend(placeholder);
+  try{
+    const resp=await fetch(`/api/rifa/${window.__rifaEditandoId}/premio/${id}/excluir/`,{method:'POST'});
+    const data=await resp.json();
+    placeholder.remove();
+    if(data.success){
+      renderListaPremios(data.premios);
+      try { localStorage.setItem('premios_updated_rifa_'+window.__rifaEditandoId, Date.now().toString()); } catch(_e){}
+    } else {
+      showNotification(data.error||'Erro ao excluir', 'error');
+    }
+  }catch(e){
+    placeholder.remove();
+    showNotification('Falha na exclusão', 'error');
+  }
+}
+
+function showNotification(message, type='info'){
+  const notification=document.createElement('div');
+  notification.className=`alert alert-${type==='error'?'danger':type==='success'?'success':'info'} alert-dismissible fade show position-fixed`;
+  notification.style.top='20px';
+  notification.style.right='20px';
+  notification.style.zIndex='9999';
+  notification.style.maxWidth='360px';
+  notification.innerHTML=`${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+  document.body.appendChild(notification);
+  setTimeout(()=>{ if(notification.parentNode) notification.remove(); },5000);
 }
 
 // Função para filtrar rifas com estados vazios melhorados

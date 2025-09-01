@@ -1,8 +1,60 @@
 {% extends 'rifa/base.html' %}
+{% load static %}
 
 {% block title %}Inicio{% endblock %}
 
 {% block content %}
+  <!-- Hero full-bleed para SORTEIOS: substitua static/img/hero/sorteios-hero.png pelo arquivo final -->
+  <section class="sorteios-hero-full">
+    <div class="sorteios-hero-bg" style="background-image: url('{% static "img/hero/sorteios-hero.svg" %}');"></div>
+    <div class="sorteios-hero-inner">
+      <h1 class="hero-title">SORTEIOS</h1>
+      <p class="hero-sub">Participe dos nossos sorteios e concorra a prêmios incríveis</p>
+    </div>
+  </section>
+
+  <script>
+    // Tenta carregar `arte.jpg` em static/img/hero/ e substitui o background do hero se existir
+    (function(){
+      const candidate = '{% static "img/hero/arte.jpg" %}';
+      const img = new Image();
+      img.onload = function(){
+        const bg = document.querySelector('.sorteios-hero-bg');
+        if(bg) bg.style.backgroundImage = `url('${candidate}')`;
+      };
+      img.onerror = function(){
+        // tenta png padrao
+        const fallback = '{% static "img/hero/sorteios-hero.png" %}';
+        const img2 = new Image();
+        img2.onload = function(){
+          const bg = document.querySelector('.sorteios-hero-bg');
+          if(bg) bg.style.backgroundImage = `url('${fallback}')`;
+        };
+        img2.onerror = function(){ /* fallback continua sendo o svg já definido */ };
+        img2.src = fallback;
+      };
+      img.src = candidate;
+    })();
+  </script>
+
+  <!-- Imagem de destaque para a seção Prêmios - substitua o arquivo em static/img/prizes/premios-hero.png -->
+  <div class="prizes-hero fade-in" data-aos="fade-up">
+    <img src="{% static 'img/prizes/premios-hero.svg' %}" alt="Prêmios - destaque" id="prizes-hero-image">
+  </div>
+
+  <script>
+    // Substitui o src da imagem de prêmios por static/img/prizes/arte.jpg se o arquivo existir
+    (function(){
+      const target = document.getElementById('prizes-hero-image');
+      if(!target) return;
+      const candidate = '{% static "img/prizes/arte.jpg" %}';
+      const img = new Image();
+      img.onload = function(){ target.src = candidate; };
+      img.onerror = function(){ /* mantém o svg atual */ };
+      img.src = candidate;
+    })();
+  </script>
+
   <h2 class="fade-in text-glow" data-aos="fade-up">⚡ Prêmios</h2>
   <div class="card-grid">
     {% for rifa in rifas %}
@@ -72,6 +124,39 @@
   </section>
 
   </section>
+{% endblock %}
+
+{% block footer %}
+<footer class="site-footer mt-5">
+  <div class="footer-inner">
+    <div class="footer-social">
+  <a href="https://www.instagram.com/pantanaldasortems/" target="_blank" aria-label="Instagram" class="social-link"><i class="fab fa-instagram"></i></a>
+  <a href="https://wa.me/67996035358" target="_blank" aria-label="WhatsApp" class="social-link"><i class="fab fa-whatsapp"></i></a>
+    </div>
+    <div class="footer-dev">Desenvolvido por <span class="dev-badge dev-green">Gui Costa</span></div>
+  <div class="footer-copy">&copy; {% now "Y" %} - Todos os direitos reservados</div>
+  </div>
+</footer>
+
+<style>
+  .site-footer{background:#111; padding:40px 15px 50px; border-top:1px solid rgba(255,215,0,.15); text-align:center; position:relative; overflow:hidden;}
+  .site-footer:before, .site-footer:after{content:""; position:absolute; width:220px; height:220px; background:radial-gradient(circle at center,rgba(255,215,0,.18),rgba(255,215,0,0)); top:-60px; left:-40px; filter:blur(25px); opacity:.4;}
+  .site-footer:after{top:auto; bottom:-70px; left:auto; right:-40px;}
+  .footer-inner{max-width:900px;margin:0 auto; position:relative; z-index:2; font-family:'Poppins',sans-serif;}
+  .footer-social{display:flex; justify-content:center; gap:34px; margin-bottom:18px;}
+  .social-link{font-size:2rem; color:#2d7dff; display:flex; align-items:center; justify-content:center; transition:.35s; position:relative; text-decoration:none;}
+  .social-link:hover{color:#6ca9ff; transform:translateY(-4px);} 
+  .footer-dev{color:#ddd; font-size:.95rem; margin-bottom:8px; letter-spacing:.5px;}
+  .dev-badge{display:inline-block; font-weight:600; position:relative;}
+  .dev-green{color:#34d058; text-shadow:0 0 6px rgba(52,208,88,.8),0 0 14px rgba(52,208,88,.4); animation:greenPulse 1.2s ease-in-out infinite;}
+  @keyframes greenPulse{0%{filter:brightness(1); text-shadow:0 0 4px rgba(52,208,88,.7),0 0 12px rgba(52,208,88,.35);}50%{filter:brightness(1.35); text-shadow:0 0 10px rgba(52,208,88,1),0 0 24px rgba(52,208,88,.6);}100%{filter:brightness(1); text-shadow:0 0 4px rgba(52,208,88,.7),0 0 12px rgba(52,208,88,.35);}}
+  .footer-copy{color:#bbb; font-size:.8rem; letter-spacing:.75px;}
+  @media (max-width:576px){
+  .social-link{font-size:1.7rem;}
+    .footer-dev{font-size:.85rem;}
+    .footer-copy{font-size:.72rem;}
+  }
+</style>
 {% endblock %}
 
 

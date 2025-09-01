@@ -47,18 +47,51 @@
     0%,100%{transform:translateY(0);box-shadow:0 0 6px rgba(63,127,18,.55),0 0 0 1px rgba(255,255,255,.05) inset;}
     50%{transform:translateY(-3px);box-shadow:0 0 14px rgba(63,127,18,.95),0 0 0 1px rgba(255,255,255,.08) inset;}
   }
+
+  /* Badge COTA MÍNIMA acima do botão +10 */
+  .cota-minima-wrap { position:relative; }
+  .badge-cota-minima {
+    position:absolute;
+    top:-14px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#28a745;
+    font-size:.65rem;
+    letter-spacing:.5px;
+    padding:4px 10px;
+    border-radius:999px;
+    font-weight:600;
+    color:#fff;
+    box-shadow:0 0 6px rgba(40,167,69,.6),0 0 0 1px rgba(255,255,255,.08) inset;
+    animation:cotaBlink 1.1s ease-in-out infinite;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  @keyframes cotaBlink {
+    0%,100% { opacity:1; filter:drop-shadow(0 0 4px rgba(40,167,69,.9)); transform:translate(-50%,0) scale(1); }
+    50% { opacity:.25; filter:drop-shadow(0 0 8px rgba(40,167,69,1)); transform:translate(-50%,-4px) scale(1.08); }
+  }
+  @media (max-width:576px){
+    .badge-cota-minima { top:-10px; font-size:.58rem; padding:3px 8px; }
+  }
+    @media (max-width:576px){
+      #btn-minus,#btn-plus{padding:.55rem .9rem;font-size:1.05rem;}
+      #btnAdquirir{font-size:1.05rem;padding:.85rem 1rem;}
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="sorteios-section d-flex justify-content-center align-items-start">
+<section class="sorteios-section d-flex justify-content-center align-items-start" data-rifa-id="{{ rifa.id }}">
   <div class="glass-login w-100">
+
+  <!-- Removidas abas de navegação para simplificar interface -->
 
     <!-- Imagem centralizada + badge posicionada -->
     <div class="text-center mb-3">
       {% if rifa.imagem %}
       <div class="raffle-img-box">
-        <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="img-fluid rounded shadow" style="width:180px;height:180px;object-fit:cover;">
+  <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="img-fluid rounded shadow" style="width:180px;height:180px;object-fit:cover;" loading="lazy" decoding="async">
         {% if not rifa.encerrada %}
           <span class="badge bg-success blink-badge badge-adquira">Adquira já!</span>
         {% endif %}
@@ -99,16 +132,18 @@
 
     <div class="row g-2 mb-3">
       {% for qtde in qtde_list %}
-      <div class="col-6 col-md-4">
+      <div class="col-6 col-md-4 {% if qtde == '10' %}cota-minima-wrap{% endif %}">
+        {% if qtde == '10' %}
+          <span class="badge-cota-minima">Cota mínima</span>
+        {% endif %}
         <button class="btn btn-outline-secondary w-100 py-2" onclick="somarCotas({{ qtde }})">
           +{{ qtde }}<br><small>Selecionar</small>
-          {% if qtde == '10' %}
-            <span class="badge bg-success ms-1">Cota mínima</span>
-          {% endif %}
         </button>
       </div>
       {% endfor %}
     </div>
+
+  <!-- Área de gerenciamento removida (agora apenas via modal na listagem) -->
 
     <div class="d-flex justify-content-center align-items-center mb-2" style="gap: 8px;">
       <button class="btn btn-outline-secondary btn-sm" id="btn-minus" type="button">−</button>
@@ -134,21 +169,71 @@
     <div id="alertMinCotas" class="alert alert-danger d-none mb-3 py-2" style="font-size:14px;"></div>
 
     {% if not rifa.encerrada %}
-    <button id="btnAdquirir" class="btn btn-success w-100 mb-2 py-2">
+    <button id="btnAdquirir" class="btn btn-success w-100 mb-2 py-2" type="button">
       ✅ Pagar — <span id="valorAdquirir">R$ {{ rifa.preco|floatformat:2 }}</span>
     </button>
     {% endif %}
 
-    <!-- Botão "Ver meus números" agora abaixo do botão Pagar (mesmo HTML original) -->
-    <button class="btn btn-outline-light fw-bold w-100 mb-3" onclick="abrirModalNumeros()">
+    <!-- Botão "Ver meus números" agora redireciona para a página Meus Números -->
+    <a class="btn btn-outline-light fw-bold w-100 mb-3 d-flex align-items-center justify-content-center" href="{% url 'meus_numeros' %}">
       <i class="fas fa-shopping-cart me-2"></i> Ver meus números
-    </button>
+    </a>
 
     <!-- Seção "Números disponíveis" removida definitivamente -->
   </div>
+  </div><!-- /glass-login -->
 </section>
 
-{% include 'rifa/modal_abrir_rifa.html' %}
+<section class="mt-5" id="premios-section">
+  <div class="d-flex align-items-center mb-1">
+    <h5 class="text-white fw-bold mb-0" style="letter-spacing:.5px;">
+      <span class="me-2" style="filter:drop-shadow(0 0 4px #ffc107);">🎉</span> Bilhetes Premiados, achou ganhou!
+    </h5>
+  </div>
+  <p class="text-muted mb-3" style="margin-top:-2px;font-size:.85rem;">Achou ganhou!</p>
+  <div id="premiosWrapper">
+    <div id="premiosLoading" class="text-center text-muted small py-3 d-none">Carregando...</div>
+    <div id="premiosEmpty" class="alert alert-secondary bg-transparent text-center text-muted py-3 mb-0 small d-none">Nenhum bilhete premiado definido ainda.</div>
+    <div class="row g-3" id="grid-premios">
+      {% if premios_list and premios_list|length > 0 %}
+        {% for premio in premios_list %}
+        <div class="col-12 col-md-6 col-lg-4 col-xl-3 d-flex">
+          <div class="premio-card flex-fill">
+            <div class="premio-head d-flex justify-content-between align-items-start">
+              <div class="premio-valor">R$ {{ premio.valor_premio|floatformat:2 }}</div>
+              {% if premio.ganho_por %}
+                <span class="premio-status ganho">Ganho</span>
+              {% else %}
+                <span class="premio-status disponivel">● Disponível</span>
+              {% endif %}
+            </div>
+            <div class="premio-numero">{{ premio.numero_premiado|stringformat:"06d" }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<style>
+  #premios-section{max-width:1100px;margin:0 auto;}
+  #grid-premios{margin-top:1.1rem;}
+  .premio-card{background:#18191b;border:1px solid #202123;border-radius:18px;padding:1rem 1.15rem 1.15rem;position:relative;overflow:hidden;transition:.28s ease;box-shadow:0 4px 14px -6px rgba(0,0,0,.65);} 
+  .premio-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 15%,rgba(255,193,7,.12),transparent 70%);opacity:.8;pointer-events:none;} 
+  .premio-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px -10px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.06) inset;} 
+  .premio-head{margin-bottom:.75rem;}
+  .premio-valor{font-weight:700;color:#fff;font-size:1rem;line-height:1.1;}
+  .premio-status{font-size:.72rem;font-weight:600;letter-spacing:.5px;padding:.35rem .75rem;border-radius:14px;white-space:nowrap;background:#222;margin-left:1rem;display:inline-flex;align-items:center;gap:.35rem;}
+  .premio-status.disponivel{color:#1dd175;background:#15281e;border:1px solid #1c6c41;} 
+  .premio-status.disponivel:before{content:'●';font-size:.75rem;color:#1dd175;} 
+  .premio-status.ganho{color:#111;background:#ffc107;border:1px solid #e0a800;} 
+  .premio-status.ganho:before{content:'★';font-size:.7rem;color:#111;}
+  .premio-numero{display:inline-block;background:#d3d6da;color:#111;font-weight:700;letter-spacing:1px;font-size:.8rem;padding:.45rem .85rem;border-radius:8px;box-shadow:0 2px 4px -1px rgba(0,0,0,.45);} 
+  @media (max-width:576px){.premio-card{padding:.95rem 1rem}.premio-valor{font-size:.95rem}.premio-status{font-size:.62rem;padding:.3rem .6rem}}
+</style>
+
+{% include 'rifa/modal_pagamento.html' %}
 {% include 'rifa/modal_buscar_numeros.html' %}
 
 <script>
@@ -234,14 +319,88 @@
       }
       return;
     }
-    // Se válido, abrir modal (chamada original)
-    if (typeof abrirModalRifa === 'function') {
-      abrirModalRifa();
-    }
+    // valor total formatado para modal
+    const total = precoUnit * qtd;
+    openPaymentModal(total.toLocaleString('pt-BR',{style:'currency', currency:'BRL'}));
   });
 
   // Inicial
   atualizar();
+})();
+
+// (Lógica de abas removida)
+</script>
+<script>
+// Atualização dinâmica dos Bilhetes Premiados
+(function(){
+  const rifaId = {{ rifa.id }};
+  const grid = document.getElementById('grid-premios');
+  const empty = document.getElementById('premiosEmpty');
+  const loading = document.getElementById('premiosLoading');
+
+  function formatValor(v){
+    return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+
+  function renderPremios(lista){
+    console.log('Renderizando premios', lista);
+    grid.innerHTML='';
+    if(!lista.length){
+      empty.classList.remove('d-none');
+      return;
+    }
+    empty.classList.add('d-none');
+    const frag=document.createDocumentFragment();
+    lista.forEach(p=>{
+      const col=document.createElement('div');
+      col.className='col-12 col-sm-6 col-lg-4';
+      col.innerHTML=`<div class="premio-card h-100 p-3">
+          <div class="premio-valor">${formatValor(p.valor)}</div>
+          <div class="premio-numero badge">${String(p.numero).padStart(6,'0')}</div>
+          <div class="premio-status ${p.ganho?'ganho':'disponivel'}">${p.ganho?'Ganho':'● Disponível'}</div>
+        </div>`;
+      frag.appendChild(col);
+    });
+    grid.appendChild(frag);
+  }
+
+  async function carregarPremiosPublico(){
+    try{
+      loading.classList.remove('d-none');
+      const resp = await fetch(`/api/rifa/${rifaId}/premios/`);
+      console.log('Resposta fetch status', resp.status);
+      const data = await resp.json();
+      console.log('Dados recebidos premios', data);
+      if(data.premios){
+        renderPremios(data.premios);
+        if(!data.premios.length){
+          empty.classList.remove('d-none');
+        }
+      }
+    }catch(e){
+      console.error('Falha ao carregar prêmios', e);
+      // Se falhar e já havia conteúdo inicial, mantém; senão mostra vazio
+      if(grid.children.length===0){
+        empty.classList.remove('d-none');
+      }
+    }finally{
+      loading.classList.add('d-none');
+    }
+  }
+
+  // Expor para refresh manual após adicionar no modal em outra página/aba
+  window.atualizarPremiosRifa = carregarPremiosPublico;
+  carregarPremiosPublico();
+  // Polling leve a cada 25s para captar novos prêmios (pode ajustar ou remover)
+  // Polling mais longo em mobile para economizar bateria
+  const intervalo = window.matchMedia('(max-width: 576px)').matches ? 40000 : 25000;
+  setInterval(carregarPremiosPublico, intervalo);
+  // Listener de storage (caso outro tab atualize prêmios)
+  window.addEventListener('storage', (e)=>{
+    if(e.key === 'premios_updated_rifa_'+rifaId){
+      carregarPremiosPublico();
+    }
+  });
 })();
 </script>
 {% endblock %}

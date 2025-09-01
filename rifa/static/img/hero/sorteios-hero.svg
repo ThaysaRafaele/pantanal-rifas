@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1600" height="420" viewBox="0 0 1600 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#ffb400"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="#050505" />
+  <g transform="translate(40,40)">
+    <text x="250" y="120" font-family="Impact, Poppins, sans-serif" font-size="80" fill="url(#gold)" stroke="#000" stroke-width="2">COMPRE E TESTE A</text>
+    <text x="250" y="210" font-family="Impact, Poppins, sans-serif" font-size="120" fill="url(#gold)" stroke="#000" stroke-width="3">SUA SORTE</text>
+  </g>
+</svg>
