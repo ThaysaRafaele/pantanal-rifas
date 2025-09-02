@@ -23,5 +23,15 @@
       <button class="btn btn-success w-100 py-2 mb-2" id="btnReservar" type="submit" disabled>Reservar bilhetes</button>
       <button type="button" id="btnOutroCadastro" class="btn btn-link w-100 p-0" style="text-decoration:underline;display:none;" onclick="resetarCpfPagamento()">Usar outro cadastro</button>
     </form>
+
+    <!-- QR area: inicialmente escondida, será preenchida por JS após criar pedido -->
+    <div id="modalQrArea" style="display:none;margin-top:16px;text-align:center;">
+      <p id="modalQrStatus">Gerando QR Code...</p>
+      <div id="modalQrImage" style="display:none;">
+        <img id="modalQrImg" src="" alt="QR Code PIX" style="max-width:220px; height:auto; border:1px solid #ddd; background:#fff; padding:8px;" />
+        <p style="margin-top:8px;"><a id="modalDownloadQr" href="#" download="qr.png">Baixar QR</a></p>
+      </div>
+      <pre id="modalQrRaw" style="display:none; word-break:break-all; white-space:pre-wrap; background:#111; color:#0f0; padding:8px; border-radius:6px;"></pre>
+    </div>
   </div>
 </div>

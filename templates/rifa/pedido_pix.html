@@ -1,0 +1,78 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pagamento PIX - Pedido {{ pedido.id }}</title>
+  <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components/payment.css' %}">
+</head>
+<body>
+  <main style="padding:24px; display:flex; flex-direction:column; align-items:center;">
+    <h1>Pedido #{{ pedido.id }} — PIX</h1>
+    <p>Valor total: R$ {{ pedido.valor_total }}</p>
+
+    <div id="qrArea" style="width:320px; text-align:center;" data-pedido-id="{{ pedido.id }}" data-valor="{{ pedido.valor_total }}">
+      <p id="qrStatus">Gerando QR Code... Por favor, aguarde.</p>
+      <div id="qrImage" style="display:none;">
+        <img id="qrImgEl" src="" alt="QR Code PIX" style="max-width:100%; height:auto; border:1px solid #ddd; background:#fff; padding:8px;" />
+        <p><a id="downloadQr" href="#" download="qr_{{ pedido.id }}.png">Baixar QR</a></p>
+      </div>
+      <pre id="qrRaw" style="display:none; word-break:break-all; white-space:pre-wrap; background:#111; color:#0f0; padding:8px; border-radius:6px;"></pre>
+    </div>
+
+    <p style="margin-top:16px;"><a href="/">Voltar ao site</a></p>
+  </main>
+
+  <script>
+    (function(){
+    async function gerar(){
+      try{
+        const area = document.getElementById('qrArea');
+        const pedidoId = area.getAttribute('data-pedido-id');
+        const valor = area.getAttribute('data-valor');
+        const resp = await fetch('/api/gerar-qr/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pedido_id: Number(pedidoId), amount: Number(valor), description: `Pagamento pedido ${pedidoId}` })
+        });
+        let data;
+        try{
+          data = await resp.json();
+        }catch(err){
+          const text = await resp.text();
+          document.getElementById('qrStatus').textContent = 'Resposta inválida do servidor: ' + text.slice(0,200);
+          console.error('Resposta inválida:', text);
+          return;
+        }
+        if(!data || !data.success){
+          document.getElementById('qrStatus').textContent = 'Erro ao gerar QR: ' + (data?.error || JSON.stringify(data));
+          console.error('Erro gerar QR:', data);
+          return;
+        }
+        const base64 = data.qr_code_base64 || data.payment?.point_of_interaction?.transaction_data?.qr_code_base64;
+        const qr = data.qr_code || data.payment?.point_of_interaction?.transaction_data?.qr_code;
+        if(base64){
+          document.getElementById('qrImgEl').src = 'data:image/png;base64,' + base64;
+          document.getElementById('downloadQr').href = 'data:image/png;base64,' + base64;
+          document.getElementById('qrStatus').style.display='none';
+          document.getElementById('qrImage').style.display='block';
+        } else if(qr){
+          document.getElementById('qrRaw').textContent = qr;
+          document.getElementById('qrRaw').style.display='block';
+          document.getElementById('qrStatus').style.display='none';
+        } else {
+          document.getElementById('qrStatus').textContent = 'QR não disponível na resposta.';
+          console.log('Resposta completa:', data);
+        }
+      }catch(err){
+        console.error(err);
+        document.getElementById('qrStatus').textContent = 'Erro inesperado ao gerar QR.';
+      }
+    }
+    gerar();
+  })();
+  </script>
+</body>
+</html>

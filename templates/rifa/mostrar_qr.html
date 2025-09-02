@@ -1,0 +1,22 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QR Code PIX - Pedido {{ pedido.id }}</title>
+  <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+</head>
+<body>
+  <main style="padding:24px; display:flex; flex-direction:column; align-items:center;">
+    <h1>QR Code PIX - Pedido {{ pedido.id }}</h1>
+    {% if qr_code_base64 %}
+      <p>Abra o app do seu banco e escaneie o QR abaixo ou copie o código TXID.</p>
+      <img src="data:image/png;base64,{{ qr_code_base64 }}" alt="QR Code PIX" style="max-width:320px; width:100%; height:auto; border:1px solid #ddd; padding:8px; background:#fff;" />
+    {% else %}
+      <p>Nenhum QR Code disponível. Se estiver testando, você pode passar <code>?qr_code_base64=...</code> na URL.</p>
+    {% endif %}
+    <p style="margin-top:16px;"><a href="{% url 'home' %}">Voltar</a></p>
+  </main>
+</body>
+</html>

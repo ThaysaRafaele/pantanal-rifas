@@ -76,14 +76,16 @@ function submitReserva(ev){
     .then(r=>r.json())
     .then(data=>{
       if(data.success && data.redirect){
-        // Checa prêmios ganhos
+        // Se ganhou prêmios, informa antes de redirecionar
         if(Array.isArray(data.premios_ganhos) && data.premios_ganhos.length){
           try {
             const msg = data.premios_ganhos.map(p=>`Número premiado ${String(p.numero).padStart(6,'0')} (R$ ${Number(p.valor).toFixed(2)})`).join('\n');
             alert('🎉 Você ACABA DE GANHAR!\n' + msg + '\nSeu prêmio já está registrado.');
           } catch(_e){}
         }
-        window.location.href=data.redirect;
+        // Redireciona o usuário para a página de pagamento onde o QR e o código serão exibidos
+        btn && (btn.textContent='Redirecionando...');
+        window.location.href = data.redirect;
       } else {
         alert(data.error||'Falha ao criar pedido');
         btn && (btn.disabled=false, btn.textContent='Reservar bilhetes');

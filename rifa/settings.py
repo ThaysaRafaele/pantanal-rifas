@@ -140,3 +140,14 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Email settings (optional)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Mercado Pago - configuração via variável de ambiente.
+# Nunca deixe tokens reais hard-coded em arquivos de configuração.
+MERCADOPAGO_ACCESS_TOKEN = os.getenv(
+    "MERCADOPAGO_ACCESS_TOKEN",
+    "APP_USR-SEU-TOKEN-AQUI"
+)
+
+# Exemplo de chamada curl (apenas referência / comentário):
+# curl -H 'Authorization: Bearer APP_USR-12345678-031820-X-12345678' \
+#   https://api.mercadolibre.com/users/me
