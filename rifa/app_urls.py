@@ -29,4 +29,10 @@ urlpatterns = [
     path('api/rifa/<int:rifa_id>/definir-premio/', views.definir_premio, name='definir_premio'),
     path('api/rifa/<int:rifa_id>/premios/', views.api_premios_rifa, name='api_premios_rifa'),
     path('api/rifa/<int:rifa_id>/premio/<int:premio_id>/excluir/', views.excluir_premio, name='excluir_premio'),
+
+    # Rotas de teste/integração com Mercado Pago
+    path('pagamento/teste/', views.teste_pagamento, name='teste_pagamento'),
+    path('pagamento/sucesso/', views.pagamento_sucesso, name='pagamento_sucesso'),
+    path('pagamento/falha/', views.pagamento_falha, name='pagamento_falha'),
+    path('pagamento/pendente/', views.pagamento_pendente, name='pagamento_pendente'),
 ]

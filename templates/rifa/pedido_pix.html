@@ -15,11 +15,44 @@
 
     <div id="qrArea" style="width:320px; text-align:center;" data-pedido-id="{{ pedido.id }}" data-valor="{{ pedido.valor_total }}">
       <p id="qrStatus">Gerando QR Code... Por favor, aguarde.</p>
+      {% if pix_codigo %}
+      <div style="margin:12px 0;">
+        <label style="display:block; font-weight:600; margin-bottom:6px; color:#fff;">Código PIX</label>
+        <pre id="pixCodigo" style="background:#111; color:#0f0; padding:8px; border-radius:6px; word-break:break-all; white-space:pre-wrap;">{{ pix_codigo }}</pre>
+        <button id="copiarPix" style="margin-top:8px; padding:10px 12px; background:#2b8a3e; color:#fff; border:none; border-radius:6px; cursor:pointer;">Copiar código PIX</button>
+      </div>
+      {% endif %}
+
       <div id="qrImage" style="display:none;">
         <img id="qrImgEl" src="" alt="QR Code PIX" style="max-width:100%; height:auto; border:1px solid #ddd; background:#fff; padding:8px;" />
         <p><a id="downloadQr" href="#" download="qr_{{ pedido.id }}.png">Baixar QR</a></p>
       </div>
+
       <pre id="qrRaw" style="display:none; word-break:break-all; white-space:pre-wrap; background:#111; color:#0f0; padding:8px; border-radius:6px;"></pre>
+
+      {% comment %} Se o servidor já passou o QR em base64, renderiza imediatamente {% endcomment %}
+      {% if pix_qr_base64 %}
+        <script>
+          document.addEventListener('DOMContentLoaded', function(){
+            try{
+              const base64 = '{{ pix_qr_base64|escapejs }}';
+              if(base64){
+                const img = document.getElementById('qrImgEl');
+                img.src = 'data:image/png;base64,' + base64;
+                document.getElementById('downloadQr').href = 'data:image/png;base64,' + base64;
+                document.getElementById('qrImage').style.display = 'block';
+                document.getElementById('qrStatus').style.display = 'none';
+                // esconder raw se houver
+                try{ document.getElementById('qrRaw').style.display='none'; }catch(e){}
+              }
+            }catch(e){ console.error(e); }
+          });
+        </script>
+      {% endif %}
+
+      {% if mercado_pago_payment_id %}
+        <p style="margin-top:8px; color:#ddd;">Pagamento ID: {{ mercado_pago_payment_id }}</p>
+      {% endif %}
     </div>
 
     <p style="margin-top:16px;"><a href="/">Voltar ao site</a></p>
@@ -58,6 +91,8 @@
           document.getElementById('downloadQr').href = 'data:image/png;base64,' + base64;
           document.getElementById('qrStatus').style.display='none';
           document.getElementById('qrImage').style.display='block';
+          // se existe campo pixCodigo no template, esconder para evitar duplicidade
+          try{ document.getElementById('pixCodigo')?.style.display = 'none'; }catch(e){}
         } else if(qr){
           document.getElementById('qrRaw').textContent = qr;
           document.getElementById('qrRaw').style.display='block';
@@ -72,6 +107,19 @@
       }
     }
     gerar();
+    // copiar código PIX quando botão existir
+    const btn = document.getElementById('copiarPix');
+    if(btn){
+      btn.addEventListener('click', function(){
+        const el = document.getElementById('pixCodigo');
+        if(!el) return;
+        const text = el.textContent || el.innerText || '';
+        navigator.clipboard?.writeText(text).then(()=>{
+          btn.textContent = 'Copiado!';
+          setTimeout(()=> btn.textContent = 'Copiar código PIX', 2500);
+        }).catch(()=>{ alert('Não foi possível copiar'); });
+      });
+    }
   })();
   </script>
 </body>

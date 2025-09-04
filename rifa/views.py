@@ -535,6 +535,32 @@ def criar_pedido(request):
             pix_txid=txid,
             expires_at=timezone.now()+timezone.timedelta(hours=1)
         )
+        # Tentar criar pagamento PIX no provedor e salvar QR/código retornados
+        try:
+            from .mercadopago_service import criar_pagamento_pix
+            mp_resp = criar_pagamento_pix(float(valor_total), payer_email=user.email if user.email else None, external_reference=str(pedido.id), description=f'Rifa {rifa.id} - Pedido {pedido.id}')
+            # Extrai id e point_of_interaction
+            if isinstance(mp_resp, dict):
+                mp_id = mp_resp.get('id') or (mp_resp.get('response') or {}).get('id')
+                if mp_id:
+                    pedido.mercado_pago_payment_id = str(mp_id)
+                # tenta extrair qr base64
+                poi = (mp_resp.get('point_of_interaction') or (mp_resp.get('response') or {}).get('point_of_interaction') or {})
+                tx = (poi.get('transaction_data') or {}) if isinstance(poi, dict) else {}
+                qr_base64 = tx.get('qr_code_base64') or None
+                qr_text = tx.get('qr_code') or None
+                if qr_base64:
+                    pedido.pix_qr_base64 = qr_base64
+                if qr_text and not pedido.pix_qr_base64:
+                    # quando só temos texto do QR, também salvamos no pix_codigo para exibir
+                    pedido.pix_codigo = qr_text
+                # atualiza pix_txid/mercado id
+                try:
+                    pedido.save(update_fields=['mercado_pago_payment_id','pix_qr_base64','pix_codigo','pix_txid'])
+                except Exception:
+                    pedido.save()
+        except Exception as e:
+            logger.exception('Não foi possível criar pagamento PIX automático: %s', e)
         # Checa prêmios ganhos
         numeros_int = [int(x) for x in numeros_reservados]
         premios_ativos = PremioBilhete.objects.filter(rifa=rifa, ativo=True, ganho_por__isnull=True, numero_premiado__in=numeros_int)
@@ -556,7 +582,16 @@ def pedido_pix(request, pedido_id):
         if pedido.expirado():
             pedido.status = 'expirado'
             pedido.save(update_fields=['status'])
-        return render(request, 'rifa/pedido_pix.html', {'pedido': pedido})
+        # passa dados de QR / PIX já gerados (se existirem)
+        pix_qr_base64 = getattr(pedido, 'pix_qr_base64', None)
+        pix_codigo = getattr(pedido, 'pix_codigo', None)
+        mercado_pago_payment_id = getattr(pedido, 'mercado_pago_payment_id', None)
+        return render(request, 'rifa/pedido_pix.html', {
+            'pedido': pedido,
+            'pix_qr_base64': pix_qr_base64,
+            'pix_codigo': pix_codigo,
+            'mercado_pago_payment_id': mercado_pago_payment_id,
+        })
     except Exception as e:
         # Log and return a simple error page to avoid blank screen
         logger.exception('Erro ao renderizar pedido_pix: %s', e)
@@ -587,7 +622,34 @@ def gerar_qr_code(request):
             amount = float(pedido.valor_total)
             description = f'Rifa #{pedido.rifa.id} - Pedido {pedido.id}'
 
-        sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+            # Se já existe QR salvo no pedido, retorna imediatamente
+            existing_qr = getattr(pedido, 'pix_qr_base64', None)
+            if existing_qr:
+                return JsonResponse({
+                    "success": True,
+                    "payment_id": getattr(pedido, 'mercado_pago_payment_id', None),
+                    "qr_code_base64": existing_qr,
+                    "status": pedido.status,
+                    "pix_codigo": getattr(pedido, 'pix_codigo', None),
+                })
+
+        try:
+            sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+        except Exception as e:
+            # SDK não disponível ou token inválido; retorna erro amigável
+            logger.exception('SDK MercadoPago indisponível: %s', e)
+            # Se temos pedido, devolve o pix_codigo para que a UI exiba algo útil
+            if pedido_id:
+                try:
+                    pedido = Pedido.objects.filter(id=int(pedido_id)).first()
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'SDK MercadoPago indisponível',
+                        'pix_codigo': getattr(pedido, 'pix_codigo', None)
+                    }, status=502)
+                except Exception:
+                    pass
+            return JsonResponse({'success': False, 'error': 'SDK MercadoPago indisponível'}, status=502)
 
         payment_data = {
             "transaction_amount": amount or 0.0,
@@ -912,3 +974,45 @@ def sortear_rifa_ajax(request, rifa_id):
             'success': False,
             'message': 'Erro interno no servidor. Tente novamente.'
         }, status=500)
+
+
+# --- VIEWS PARA INTEGRAÇÃO MERCADOPAGO / TESTES ---
+from django.shortcuts import redirect
+from .mercadopago_service import criar_preferencia
+from django.http import HttpResponse
+
+def teste_pagamento(request):
+    # Exemplo: criar um pagamento de teste
+    try:
+        preference = criar_preferencia("Rifa Teste", 10.00)
+    except Exception as e:
+        # Retorna uma resposta amigável em caso de erro de criação da preferência
+        return HttpResponse(f"Erro ao criar preferência de pagamento: {str(e)}", status=500)
+
+    # Redireciona para o checkout do Mercado Pago
+    init_point = None
+    if isinstance(preference, dict):
+        init_point = preference.get("init_point") or preference.get('sandbox_init_point')
+    try:
+        if not init_point:
+            # Se não houver init_point, tenta obter do objeto direto
+            init_point = preference['init_point']
+    except Exception:
+        pass
+
+    if not init_point:
+        return HttpResponse('Preferência criada, mas init_point não disponível.', status=502)
+
+    return redirect(init_point)
+
+
+def pagamento_sucesso(request):
+    return HttpResponse("✅ Pagamento aprovado com sucesso!")
+
+
+def pagamento_falha(request):
+    return HttpResponse("❌ O pagamento falhou!")
+
+
+def pagamento_pendente(request):
+    return HttpResponse("⏳ O pagamento está pendente.")

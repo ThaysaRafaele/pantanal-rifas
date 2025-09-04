@@ -11,7 +11,7 @@
 <section class="sorteios-section">
   <div class="container-fluid">
     <div class="row justify-content-center">
-      <div class="col-12 col-lg-8 col-xl-6">
+  <div class="col-12 col-lg-10 col-xl-8 mx-auto">
         
         <!-- Header Principal -->
         <div class="sorteios-header-premium">
@@ -58,7 +58,7 @@
         </div>
 
         <!-- Cards de Rifas Premium -->
-        <div class="rifas-grid">
+  <div class="rifas-grid justify-content-center">
           {% for rifa in rifas %}
           <div class="rifa-card-premium {% if rifa.encerrada %}encerrada{% endif %}" data-status="{% if rifa.encerrada %}encerrada{% else %}ativa{% endif %}">
             
