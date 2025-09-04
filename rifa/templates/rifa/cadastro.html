@@ -2,7 +2,7 @@
 {% block title %}Cadastro Pantanal da Sorte{% endblock %}
 
 {% block content %}
-<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;" data-aos="fade-up">
+<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
   <div class="glass-login w-100" style="max-width: 600px;">
     <h2>Cadastro</h2>
     {% if messages %}
@@ -10,183 +10,55 @@
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
       {% endfor %}
     {% endif %}
-    <form method="POST" action="">
+
+    <form method="POST" action="{% url 'cadastro' %}">
       {% csrf_token %}
-      <!-- Nome completo -->
       <div class="mb-3">
         <label for="nomeCompleto" class="form-label">Nome completo</label>
-        <input type="text" class="form-control" id="nomeCompleto" name="nomeCompleto" required autocomplete="name">
+        <input type="text" class="form-control" id="nomeCompleto" name="nomeCompleto" required>
       </div>
-      <!-- Nome Social -->
+
       <div class="mb-3">
         <label for="nomeSocial" class="form-label">Nome Social</label>
-        <input type="text" class="form-control" id="nomeSocial" name="nomeSocial" autocomplete="nickname">
+        <input type="text" class="form-control" id="nomeSocial" name="nomeSocial">
       </div>
-      <!-- CPF -->
+
       <div class="mb-3">
         <label for="cpf" class="form-label">CPF</label>
-        <input type="text" class="form-control" id="cpf" name="cpf" required maxlength="14" pattern="\d{3}\.\d{3}\.\d{3}-\d{2}" placeholder="000.000.000-00">
+        <input type="text" class="form-control" id="cpf" name="cpf" required placeholder="000.000.000-00">
       </div>
-      <!-- Data de nascimento -->
+
       <div class="mb-3">
         <label for="dataNascimento" class="form-label">Data de nascimento</label>
-        <div class="input-group" style="position:relative;">
-          <span class="input-group-text" id="calendar-btn" style="cursor:pointer; z-index:2;">
-            <i class="fas fa-calendar-alt"></i>
-            <input type="date" id="hiddenDate" style="opacity:0; position:absolute; left:0; top:0; width:36px; height:100%; cursor:pointer; z-index:3;">
-          </span>
-          <input type="text" class="form-control" id="dataNascimento" name="dataNascimento" placeholder="dd/mm/aaaa" required autocomplete="off">
-        </div>
+        <input type="text" class="form-control" id="dataNascimento" name="dataNascimento" placeholder="dd/mm/aaaa" required>
       </div>
-      <!-- Email -->
+
       <div class="mb-3">
         <label for="email" class="form-label">E-mail</label>
-        <input type="email" class="form-control" id="email" name="email" required autocomplete="email">
+        <input type="email" class="form-control" id="email" name="email" required>
       </div>
-      <!-- Senha -->
+
       <div class="mb-3">
         <label for="senha" class="form-label">Senha</label>
-        <input type="password" class="form-control" id="senha" name="senha" required autocomplete="new-password">
+        <input type="password" class="form-control" id="senha" name="senha" required>
       </div>
-      <!-- Repita a senha -->
+
       <div class="mb-3">
         <label for="senha2" class="form-label">Repita a senha</label>
-        <input type="password" class="form-control" id="senha2" name="senha2" required autocomplete="new-password">
+        <input type="password" class="form-control" id="senha2" name="senha2" required>
       </div>
-      <!-- Telefone -->
-      <div class="mb-3">
-        <label for="telefone" class="form-label">Telefone</label>
-        <input type="tel" class="form-control" id="telefone" name="telefone" required maxlength="15" pattern="\(\d{2}\) \d{5}-\d{4}" placeholder="(00) 00000-0000">
-      </div>
-      <!-- Confirmar telefone -->
-      <div class="mb-3">
-        <label for="confirmaTelefone" class="form-label">Confirmar telefone</label>
-        <input type="tel" class="form-control" id="confirmaTelefone" name="confirmaTelefone" required maxlength="15" pattern="\(\d{2}\) \d{5}-\d{4}" placeholder="(00) 00000-0000">
-      </div>
-      <!-- CEP -->
-      <div class="mb-3">
-        <label for="cep" class="form-label">CEP</label>
-        <input type="text" class="form-control" id="cep" name="cep" required maxlength="9" pattern="\d{5}-\d{3}" placeholder="00000-000">
-      </div>
-      <!-- Logradouro + Número -->
-      <div class="row mb-3">
-        <div class="col-md-8">
-          <label for="logradouro" class="form-label">Logradouro</label>
-          <input type="text" class="form-control" id="logradouro" name="logradouro" required>
-        </div>
-        <div class="col-md-4">
-          <label for="numero" class="form-label">Número</label>
-          <input type="text" class="form-control" id="numero" name="numero" required>
-        </div>
-      </div>
-      <!-- Bairro + Complemento -->
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label for="bairro" class="form-label">Bairro</label>
-          <input type="text" class="form-control" id="bairro" name="bairro" required>
-        </div>
-        <div class="col-md-6">
-          <label for="complemento" class="form-label">Complemento</label>
-          <input type="text" class="form-control" id="complemento" name="complemento">
-        </div>
-      </div>
-      <!-- UF + Cidade -->
-      <div class="row mb-3">
-        <div class="col-md-4">
-          <label for="uf" class="form-label">UF</label>
-          <select id="uf" name="uf" class="form-select" required>
-            <option selected disabled>-- UF --</option>
-            <option value="AC">AC</option>
-            <option value="AL">AL</option>
-            <option value="AP">AP</option>
-            <option value="AM">AM</option>
-            <option value="BA">BA</option>
-            <option value="CE">CE</option>
-            <option value="DF">DF</option>
-            <option value="ES">ES</option>
-            <option value="GO">GO</option>
-            <option value="MA">MA</option>
-            <option value="MT">MT</option>
-            <option value="MS">MS</option>
-            <option value="MG">MG</option>
-            <option value="PA">PA</option>
-            <option value="PB">PB</option>
-            <option value="PR">PR</option>
-            <option value="PE">PE</option>
-            <option value="PI">PI</option>
-            <option value="RJ">RJ</option>
-            <option value="RN">RN</option>
-            <option value="RS">RS</option>
-            <option value="RO">RO</option>
-            <option value="RR">RR</option>
-            <option value="SC">SC</option>
-            <option value="SP">SP</option>
-            <option value="SE">SE</option>
-            <option value="TO">TO</option>
-          </select>
-        </div>
-        <div class="col-md-8">
-          <label for="cidade" class="form-label">Cidade</label>
-          <input type="text" class="form-control" id="cidade" name="cidade" required>
-        </div>
-      </div>
-      <!-- Ponto de referência -->
-      <div class="mb-4">
-        <label for="referencia" class="form-label">Ponto de referência</label>
-        <input type="text" class="form-control" id="referencia" name="referencia">
-      </div>
-      <button type="submit" class="btn btn-primary w-100" id="btnSalvar">
-        <span id="btnText">Salvar</span>
-        <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2" style="display:none;" role="status" aria-hidden="true"></span>
-      </button>
+
+      <button type="submit" class="btn btn-primary w-100">Salvar</button>
     </form>
   </div>
 </section>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.8/jquery.inputmask.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 <script>
   $(document).ready(function(){
-    $('#dataNascimento').inputmask('99/99/9999');
-    // Quando seleciona no calendário, preenche o campo texto formatado
-    $('#hiddenDate').on('change', function(){
-      var val = $(this).val();
-      if(val){
-        var partes = val.split('-');
-        if(partes.length === 3){
-          var formatada = partes[2] + '/' + partes[1] + '/' + partes[0];
-          $('#dataNascimento').val(formatada);
-        }
-      }
-    });
     $('#cpf').inputmask('999.999.999-99');
-    $('#telefone, #confirmaTelefone').inputmask({'mask': '(99) 99999-9999'});
-    $('#cep').inputmask('99999-999');
-
-    // CEP auto-preenchimento (keyup + change para colagem)
-    function buscaCep(){
-      var cep = $('#cep').val().replace(/\D/g, '');
-      if(cep.length === 8){
-        $.getJSON('https://viacep.com.br/ws/' + cep + '/json/', function(data){
-          if(!data.erro){
-            $('#logradouro').val(data.logradouro || '');
-            $('#bairro').val(data.bairro || '');
-            $('#cidade').val(data.localidade || '');
-            $('#uf').val(data.uf || '');
-          }else{
-            alert('CEP não encontrado!');
-          }
-        }).fail(function(){
-          alert('Erro ao buscar CEP!');
-        });
-      }
-    }
-    $('#cep').on('keyup change', buscaCep);
-
-    $('form').on('submit', function(){
-      $('#btnText').hide();
-      $('#btnSpinner').show();
-    });
+    $('#dataNascimento').inputmask('99/99/9999');
   });
 </script>
 {% endblock %}

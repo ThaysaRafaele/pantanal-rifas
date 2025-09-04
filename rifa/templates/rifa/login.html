@@ -5,7 +5,26 @@
   <h2 class="mb-3">Entrar</h2>
   <form method="post" action="{% url 'login' %}">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="id_username" class="form-label">Usuário / CPF / E-mail</label>
+      <input type="text" name="username" id="id_username" class="form-control" placeholder="Digite CPF (000.000.000-00), e‑mail ou usuário" value="{{ form.username.value|default_if_none:'' }}" required>
+      {% if form.username.errors %}
+        <div class="text-danger small">{{ form.username.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label for="id_password" class="form-label">Senha</label>
+      <input type="password" name="password" id="id_password" class="form-control" placeholder="Senha" required>
+      {% if form.password.errors %}
+        <div class="text-danger small">{{ form.password.errors }}</div>
+      {% endif %}
+    </div>
+
     <button type="submit" class="btn btn-primary w-100">Entrar</button>
   </form>
 </div>

@@ -3,12 +3,15 @@
     <button class="pay-close" type="button" aria-label="Fechar" onclick="closePaymentModal()">×</button>
     <h3 id="payTitle" class="pay-title">Finalize sua compra</h3>
     <p class="pay-total">Valor total: <span id="payValorTotal">R$ 0,00</span></p>
-    <form id="payForm" onsubmit="return submitReserva(event)">
+
+    <form id="payForm" onsubmit="return verificarCpf(event)">
+      <!-- CPF -->
       <div class="mb-3">
         <label class="form-label small text-uppercase">CPF <span class="text-danger">(obrigatório)</span></label>
         <input type="text" maxlength="14" placeholder="000.000.000-00" class="form-control" id="payCpf" required>
       </div>
 
+      <!-- Dados do usuário -->
       <div id="payUserBox" class="p-3 rounded mb-3" style="display:none;background:#222;border:1px solid #333;">
         <div class="d-flex align-items-center mb-2" style="gap:.6rem;">
           <i class="fas fa-user text-white-50"></i>
@@ -18,13 +21,20 @@
         <div class="small text-muted" id="payUserTelefone"></div>
       </div>
 
-      <div id="payUserNotFound" class="alert alert-warning py-2 mb-3" style="display:none;font-size:.85rem;">Não existe conta cadastrada neste CPF. <a href="/cadastro/" class="alert-link">Faça seu cadastro</a> para comprar números.</div>
+      <!-- CPF não encontrado -->
+      <div id="payUserNotFound" class="alert alert-warning py-2 mb-3" style="display:none;font-size:.85rem;">
+        Não existe conta cadastrada neste CPF. 
+        <a href="/cadastro/" class="alert-link">Faça seu cadastro</a> para comprar números.
+      </div>
 
-      <button class="btn btn-success w-100 py-2 mb-2" id="btnReservar" type="submit" disabled>Reservar bilhetes</button>
+      <!-- Botão pagar -->
+      <button class="btn btn-success w-100 py-2 mb-2" id="btnPagar" type="button" style="display:none;" onclick="fazerPagamento()">Pagar</button>
+      
+      <!-- Usar outro cadastro -->
       <button type="button" id="btnOutroCadastro" class="btn btn-link w-100 p-0" style="text-decoration:underline;display:none;" onclick="resetarCpfPagamento()">Usar outro cadastro</button>
     </form>
 
-    <!-- QR area: inicialmente escondida, será preenchida por JS após criar pedido -->
+    <!-- Área de QR Code -->
     <div id="modalQrArea" style="display:none;margin-top:16px;text-align:center;">
       <p id="modalQrStatus">Gerando QR Code...</p>
       <div id="modalQrImage" style="display:none;">
@@ -35,3 +45,60 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Simulação de CPFs cadastrados
+  const usuariosCadastrados = {
+    "111.111.111-11": {
+      nome: "João Silva",
+      email: "joao@email.com",
+      telefone: "(65) 99999-9999"
+    },
+    "222.222.222-22": {
+      nome: "Maria Souza",
+      email: "maria@email.com",
+      telefone: "(65) 98888-8888"
+    }
+  };
+
+  function verificarCpf(event) {
+    event.preventDefault();
+    const cpf = document.getElementById('payCpf').value.trim();
+    const userBox = document.getElementById('payUserBox');
+    const notFound = document.getElementById('payUserNotFound');
+    const btnPagar = document.getElementById('btnPagar');
+    const btnOutro = document.getElementById('btnOutroCadastro');
+
+    // Resetar elementos
+    userBox.style.display = 'none';
+    notFound.style.display = 'none';
+    btnPagar.style.display = 'none';
+    btnOutro.style.display = 'none';
+
+    if (usuariosCadastrados.hasOwnProperty(cpf)) {
+      // CPF encontrado
+      document.getElementById('payUserNome').textContent = usuariosCadastrados[cpf].nome;
+      document.getElementById('payUserEmail').textContent = usuariosCadastrados[cpf].email;
+      document.getElementById('payUserTelefone').textContent = usuariosCadastrados[cpf].telefone;
+      userBox.style.display = 'block';
+      btnPagar.style.display = 'block';
+      btnOutro.style.display = 'block';
+    } else {
+      // CPF não encontrado
+      notFound.style.display = 'block';
+    }
+  }
+
+  function fazerPagamento() {
+    alert("🔗 Integre aqui a API do Mercado Pago para gerar o pagamento PIX.");
+    // Aqui você vai implementar a chamada real para sua API
+  }
+
+  function resetarCpfPagamento() {
+    document.getElementById('payCpf').value = '';
+    document.getElementById('payUserBox').style.display = 'none';
+    document.getElementById('btnPagar').style.display = 'none';
+    document.getElementById('btnOutroCadastro').style.display = 'none';
+    document.getElementById('payUserNotFound').style.display = 'none';
+  }
+</script>

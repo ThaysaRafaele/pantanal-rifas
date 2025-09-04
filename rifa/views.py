@@ -65,6 +65,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.models import User
+# models_profile defines UserProfile; import it and alias to Perfil so existing code continues to work
+from .models_profile import UserProfile as Perfil
+from django.contrib.auth import login
+
 
 def meus_numeros(request):
     return render(request, 'rifa/meus_numeros.html')
@@ -89,7 +94,24 @@ def sorteio_detail(request, id):
 
 def login_view(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        # Copia os dados do POST para podermos normalizar o campo 'username'
+        post = request.POST.copy()
+        raw_user = post.get('username', '').strip()
+        import re
+        digits = re.sub(r'\D', '', raw_user)
+        # Se o usuário digitou um CPF (formatado ou não), tenta usar os dígitos como username
+        if len(digits) == 11 and User.objects.filter(username=digits).exists():
+            post['username'] = digits
+        else:
+            # Se não for CPF, tenta localizar por e-mail (login via e-mail)
+            try:
+                user_by_email = User.objects.filter(email__iexact=raw_user).first()
+                if user_by_email:
+                    post['username'] = user_by_email.username
+            except Exception:
+                pass
+
+        form = AuthenticationForm(request, data=post)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
@@ -98,22 +120,66 @@ def login_view(request):
         form = AuthenticationForm()
     return render(request, 'rifa/login.html', {'form': form})
 
-def cadastro_view(request):
-    from .forms_user import CustomUserCreationForm
+def cadastro(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            # Save extra fields to user model (first_name, email, etc.)
-            user.first_name = form.cleaned_data.get('nomeCompleto')
-            user.email = form.cleaned_data.get('email')
-            user.save()
-            # Optionally, save extra info to a profile model or another table
-            login(request, user)
-            return redirect('home')
-    else:
-        form = CustomUserCreationForm()
-    return render(request, 'rifa/cadastro.html', {'form': form})
+        nome = request.POST['nomeCompleto']
+        social = request.POST.get('nomeSocial', '')
+        cpf = request.POST['cpf']
+        data = request.POST['dataNascimento']
+        email = request.POST['email']
+        senha = request.POST['senha']
+        senha2 = request.POST['senha2']
+
+        if senha != senha2:
+            messages.error(request, "As senhas não coincidem.")
+            return redirect('cadastro')
+
+        # Normaliza CPF para salvar no perfil
+        import re
+        cpf_digits = re.sub(r'\D','', cpf)
+        cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits)==11 else cpf
+
+        # Verifica se o CPF já existe em UserProfile (tanto formatado quanto somente dígitos)
+        from rifa.models_profile import UserProfile as _UP
+        exists_profile = _UP.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).first()
+        if not exists_profile:
+            # fallback: varredura para normalizar possíveis formatos diferentes
+            for p in _UP.objects.all():
+                if re.sub(r'\D','', p.cpf or '') == cpf_digits:
+                    exists_profile = p
+                    break
+        if exists_profile:
+            messages.error(request, "CPF já cadastrado.")
+            return redirect('cadastro')
+
+        # Usa nomeSocial como username (sanitiza e garante unicidade). Nunca usar CPF como username.
+        raw_username = (social or '').strip()
+        if not raw_username:
+            # fallback: usar primeiro nome ou parte do email
+            if nome:
+                raw_username = nome.split()[0]
+            else:
+                raw_username = (email.split('@',1)[0] if email else 'user')
+
+        # sanitize: permitir apenas chars suportados por Django username (@ . + - _ e alfanum)
+        username_base = re.sub(r"[^A-Za-z0-9@.\+\-_]", '_', raw_username)[:140]
+        username = username_base
+        suffix = 0
+        while User.objects.filter(username=username).exists():
+            suffix += 1
+            tail = str(suffix)
+            allowed_len = 150 - len(tail)
+            username = (username_base[:allowed_len] + tail)
+
+        # cria usuário com username derivado de nomeSocial (NUNCA CPF) e salva perfil com CPF formatado
+        user = User.objects.create_user(username=username, email=email, password=senha, first_name=nome)
+        Perfil.objects.create(user=user, cpf=cpf_formatted, nome_social=social, data_nascimento=data)
+
+        login(request, user)  # loga automaticamente
+        messages.success(request, "Cadastro realizado com sucesso!")
+        return redirect('home')
+
+    return render(request, 'rifa/cadastro.html')
 
 @login_required
 def premios(request):

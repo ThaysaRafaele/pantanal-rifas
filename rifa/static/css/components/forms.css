@@ -28,9 +28,10 @@
   border-radius: 10px; 
   background: #1e1e1e; 
   border: 1px solid #333; 
-  color: #fff;
+  color: #fff !important;
   transition: all 0.3s ease;
   font-size: 14px;
+  caret-color: var(--accent-gold, #ffd700);
 }
 
 .form-control:focus, .form-select:focus{ 
