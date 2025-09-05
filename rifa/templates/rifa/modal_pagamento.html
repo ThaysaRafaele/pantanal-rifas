@@ -9,6 +9,7 @@
       <div class="mb-3">
         <label class="form-label small text-uppercase">CPF <span class="text-danger">(obrigatório)</span></label>
         <input type="text" maxlength="14" placeholder="000.000.000-00" class="form-control" id="payCpf" required>
+        <div id="payCpfInvalid" class="text-danger small" style="display:none;margin-top:6px;">CPF inválido.</div>
       </div>
 
       <!-- Dados do usuário -->
@@ -27,11 +28,11 @@
         <a href="/cadastro/" class="alert-link">Faça seu cadastro</a> para comprar números.
       </div>
 
-      <!-- Botão pagar -->
-      <button class="btn btn-success w-100 py-2 mb-2" id="btnPagar" type="button" style="display:none;" onclick="fazerPagamento()">Pagar</button>
-      
-      <!-- Usar outro cadastro -->
-      <button type="button" id="btnOutroCadastro" class="btn btn-link w-100 p-0" style="text-decoration:underline;display:none;" onclick="resetarCpfPagamento()">Usar outro cadastro</button>
+  <!-- Ações: Pagar + Usar outro cadastro (empilhados) -->
+  <div id="payActions" class="modal-actions" style="display:none;margin-top:8px;gap:8px;flex-direction:column;align-items:center;">
+        <button class="btn btn-success w-100 py-2" id="btnPagar" type="button" onclick="fazerPagamento()">Pagar</button>
+        <button type="button" id="btnOutroCadastro" class="btn btn-link" style="text-decoration:underline;padding:0;margin-top:4px;" onclick="resetarCpfPagamento()">Usar outro cadastro</button>
+      </div>
     </form>
 
     <!-- Área de QR Code -->
@@ -47,46 +48,72 @@
 </div>
 
 <script>
-  // Simulação de CPFs cadastrados
-  const usuariosCadastrados = {
-    "111.111.111-11": {
-      nome: "João Silva",
-      email: "joao@email.com",
-      telefone: "(65) 99999-9999"
-    },
-    "222.222.222-22": {
-      nome: "Maria Souza",
-      email: "maria@email.com",
-      telefone: "(65) 98888-8888"
-    }
-  };
+  // Dependemos do backend para verificar CPFs
 
   function verificarCpf(event) {
     event.preventDefault();
-    const cpf = document.getElementById('payCpf').value.trim();
+    const cpfRaw = document.getElementById('payCpf').value.trim();
+    const cpf = cpfRaw.replace(/\D/g, '');
     const userBox = document.getElementById('payUserBox');
     const notFound = document.getElementById('payUserNotFound');
-    const btnPagar = document.getElementById('btnPagar');
-    const btnOutro = document.getElementById('btnOutroCadastro');
+    const payActions = document.getElementById('payActions');
+    const invalidMsg = document.getElementById('payCpfInvalid');
 
     // Resetar elementos
     userBox.style.display = 'none';
     notFound.style.display = 'none';
-    btnPagar.style.display = 'none';
-    btnOutro.style.display = 'none';
+    if (payActions) payActions.style.display = 'none';
+    if (invalidMsg) invalidMsg.style.display = 'none';
 
-    if (usuariosCadastrados.hasOwnProperty(cpf)) {
-      // CPF encontrado
-      document.getElementById('payUserNome').textContent = usuariosCadastrados[cpf].nome;
-      document.getElementById('payUserEmail').textContent = usuariosCadastrados[cpf].email;
-      document.getElementById('payUserTelefone').textContent = usuariosCadastrados[cpf].telefone;
-      userBox.style.display = 'block';
-      btnPagar.style.display = 'block';
-      btnOutro.style.display = 'block';
-    } else {
-      // CPF não encontrado
-      notFound.style.display = 'block';
+    // Valida CPF localmente
+    if (!isValidCPF(cpf)) {
+      if (invalidMsg) invalidMsg.style.display = 'block';
+      return false;
     }
+
+    // Chama API backend para verificar o CPF
+    fetch('/api/verificar-cpf/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cpf: cpf })
+    }).then(r => r.json()).then(data => {
+      if (data && data.found) {
+        const u = data.user || {};
+        document.getElementById('payUserNome').textContent = u.nome || '—';
+        document.getElementById('payUserEmail').textContent = u.email || '';
+        document.getElementById('payUserTelefone').textContent = u.telefone || '';
+        userBox.style.display = 'block';
+        if (payActions) payActions.style.display = 'flex';
+      } else {
+        notFound.style.display = 'block';
+        if (payActions) payActions.style.display = 'none';
+      }
+    }).catch(err => {
+      console.error('Erro verificando CPF', err);
+      notFound.style.display = 'block';
+      if (payActions) payActions.style.display = 'none';
+    });
+  }
+
+  // Validação de CPF (recebe apenas dígitos, sem formatação)
+  function isValidCPF(digits) {
+    if (!digits || digits.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(digits)) return false; // todos iguais
+    const nums = digits.split('').map(d => parseInt(d, 10));
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += nums[i] * (10 - i);
+    let rev = (sum * 10) % 11;
+    if (rev === 10) rev = 0;
+    if (rev !== nums[9]) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += nums[i] * (11 - i);
+    rev = (sum * 10) % 11;
+    if (rev === 10) rev = 0;
+    if (rev !== nums[10]) return false;
+
+    return true;
   }
 
   function fazerPagamento() {
@@ -96,9 +123,8 @@
 
   function resetarCpfPagamento() {
     document.getElementById('payCpf').value = '';
-    document.getElementById('payUserBox').style.display = 'none';
-    document.getElementById('btnPagar').style.display = 'none';
-    document.getElementById('btnOutroCadastro').style.display = 'none';
+  document.getElementById('payUserBox').style.display = 'none';
+  if(document.getElementById('payActions')) document.getElementById('payActions').style.display = 'none';
     document.getElementById('payUserNotFound').style.display = 'none';
   }
 </script>

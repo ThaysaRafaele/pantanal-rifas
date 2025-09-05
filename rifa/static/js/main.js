@@ -8,6 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById('input-cotas');
     if (input) input.value = valor;
   };
+  
+  // Garante que mudanças programáticas também disparem o evento 'input' para atualizar totais
+  const dispatchInputUpdate = (valor) => {
+    const input = document.getElementById('input-cotas');
+    if (!input) return;
+    input.value = String(valor);
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch(e) { /* fallback */ }
+  };
 
   // Função para mostrar feedback visual
   const showFeedback = (message, type = 'success') => {
@@ -184,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".btn-cotas").forEach((b) => b.classList.remove("active"));
       e.target.classList.add("active");
       const valor = parseInt(e.target.dataset.valor, 10);
-      updateInputCotas(valor);
+      dispatchInputUpdate(valor);
     }
 
     // Botão +
@@ -192,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const input = document.getElementById("input-cotas");
       if (input) {
         const valor = parseInt(input.value, 10) || 0;
-        updateInputCotas(valor + 1);
+          dispatchInputUpdate(valor + 1);
         document.querySelectorAll(".btn-cotas").forEach((b) => b.classList.remove("active"));
       }
     }
@@ -207,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           valor = valor - 1;
         }
-        updateInputCotas(valor);
+        dispatchInputUpdate(valor);
         document.querySelectorAll(".btn-cotas").forEach((b) => b.classList.remove("active"));
       }
     }

@@ -7,6 +7,10 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.conf import settings
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import ObjectDoesNotExist
 import mercadopago
 import json
 import logging
@@ -84,7 +88,7 @@ def ganhadores(request):
 @login_required
 def sorteio_detail(request, id):
     rifa = get_object_or_404(Rifa, id=id)
-    qtde_list = ['10', '20', '50', '100', '200', '500']  # Sugestão de quantidades para compra
+    qtde_list = ['5', '10', '20', '50', '100', '200']  # Sugestão de quantidades para compra
     numeros_list = Numero.objects.filter(rifa=rifa).order_by('numero')
     return render(request, 'rifa/raffle_detail.html', {
         'rifa': rifa,
@@ -111,11 +115,39 @@ def login_view(request):
             except Exception:
                 pass
 
+        # Primeiro tentativa com os dados normalizados
         form = AuthenticationForm(request, data=post)
         if form.is_valid():
             user = form.get_user()
+            logger.debug('login success: raw=%s -> candidate=%s user=%s', raw_user, post.get('username'), user.username)
             login(request, user)
             return redirect('home')
+        else:
+            logger.debug('login attempt failed: raw=%s -> candidate=%s form_errors=%s', raw_user, post.get('username'), form.non_field_errors() or form.errors)
+
+        # Se falhou, tentar localizar por username exato (case-insensitive) ou pelo nome_social do perfil
+        try:
+            # tenta username case-insensitive
+            u = User.objects.filter(username__iexact=raw_user).first()
+            if u:
+                post['username'] = u.username
+                logger.debug('fallback matched username__iexact: raw=%s -> %s', raw_user, post['username'])
+                form = AuthenticationForm(request, data=post)
+                if form.is_valid():
+                    login(request, form.get_user())
+                    return redirect('home')
+            # tenta por nome_social no perfil (case-insensitive)
+            from rifa.models_profile import UserProfile
+            profile = UserProfile.objects.filter(nome_social__iexact=raw_user).select_related('user').first()
+            if profile and profile.user:
+                post['username'] = profile.user.username
+                logger.debug('fallback matched nome_social: raw=%s -> %s', raw_user, post['username'])
+                form = AuthenticationForm(request, data=post)
+                if form.is_valid():
+                    login(request, form.get_user())
+                    return redirect('home')
+        except Exception:
+            pass
     else:
         form = AuthenticationForm()
     return render(request, 'rifa/login.html', {'form': form})
@@ -163,13 +195,13 @@ def cadastro(request):
 
         # sanitize: permitir apenas chars suportados por Django username (@ . + - _ e alfanum)
         username_base = re.sub(r"[^A-Za-z0-9@.\+\-_]", '_', raw_username)[:140]
-        username = username_base
+        username = username_base.lower()
         suffix = 0
         while User.objects.filter(username=username).exists():
             suffix += 1
             tail = str(suffix)
             allowed_len = 150 - len(tail)
-            username = (username_base[:allowed_len] + tail)
+            username = (username_base[:allowed_len] + tail).lower()
 
         # cria usuário com username derivado de nomeSocial (NUNCA CPF) e salva perfil com CPF formatado
         user = User.objects.create_user(username=username, email=email, password=senha, first_name=nome)
@@ -189,6 +221,49 @@ def premios(request):
 def home(request):
     rifas = Rifa.objects.all()
     return render(request, 'rifa/home.html', {'rifas': rifas, 'user': request.user})
+
+
+@csrf_exempt
+@require_POST
+def verificar_cpf(request):
+    """API simples para verificar se existe usuário com o CPF fornecido.
+    Recebe 'cpf' no body (form-encoded ou json). Retorna JSON:
+    { found: true/false, user: { nome, email, telefone } }
+    """
+    try:
+        data = request.POST or json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return HttpResponseBadRequest('Invalid payload')
+
+    cpf_raw = data.get('cpf')
+    if not cpf_raw:
+        return HttpResponseBadRequest('cpf required')
+
+    import re
+    cpf_digits = re.sub(r'\D', '', cpf_raw)
+    if len(cpf_digits) != 11:
+        return JsonResponse({'found': False})
+
+    # Tenta por diferentes formatos
+    cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
+    from .models_profile import UserProfile
+    profile = UserProfile.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).select_related('user').first()
+    if not profile:
+        # tentar varredura normalizando outros perfis
+        for p in UserProfile.objects.all():
+            if re.sub(r'\D', '', p.cpf or '') == cpf_digits:
+                profile = p
+                break
+
+    if not profile:
+        return JsonResponse({'found': False})
+
+    user = profile.user
+    return JsonResponse({'found': True, 'user': {
+        'nome': profile.nome_social or user.get_full_name() or user.username,
+        'email': user.email,
+        'telefone': getattr(profile, 'telefone', '')
+    }})
 # View para busca de pedidos por telefone
 @csrf_exempt
 def buscar_pedidos(request):
@@ -259,7 +334,7 @@ def buscar_numeros_por_telefone(request):
 
 def raffle_detail(request, raffle_id):
     rifa = get_object_or_404(Rifa, id=raffle_id)
-    qtde_list = ['10', '20', '50', '100', '200', '500']  # Sugestão de quantidades para compra
+    qtde_list = ['5', '10', '20', '50', '100', '200']  # Sugestão de quantidades para compra
     numeros_list = Numero.objects.filter(rifa=rifa).order_by('numero')
     if request.method == 'POST':
         numero_id = request.POST.get('numero')

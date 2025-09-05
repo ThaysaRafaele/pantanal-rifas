@@ -22,6 +22,7 @@ urlpatterns = [
     path('buscar-pedidos/', views.buscar_pedidos, name='buscar_pedidos'),
     path('api/usuario-por-cpf/', views.api_usuario_por_cpf, name='api_usuario_por_cpf'),
     path('api/criar-pedido/', views.criar_pedido, name='criar_pedido'),
+    path('api/verificar-cpf/', views.verificar_cpf, name='verificar_cpf'),
     path('api/gerar-qr/', views.gerar_qr_code, name='gerar_qr'),
     path('pedido/<int:pedido_id>/pix/', views.pedido_pix, name='pedido_pix'),
     path('pedido/<int:pedido_id>/mostrar-qr/', views.mostrar_qr, name='mostrar_qr'),

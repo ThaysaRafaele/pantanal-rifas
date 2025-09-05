@@ -48,7 +48,7 @@
     50%{transform:translateY(-3px);box-shadow:0 0 14px rgba(63,127,18,.95),0 0 0 1px rgba(255,255,255,.08) inset;}
   }
 
-  /* Badge COTA MÍNIMA acima do botão +10 */
+  /* Badge COTA RECOMENDADA acima do botão +10 */
   .cota-minima-wrap { position:relative; }
   .badge-cota-minima {
     position:absolute;
@@ -132,15 +132,23 @@
 
     <div class="row g-2 mb-3">
       {% for qtde in qtde_list %}
-      <div class="col-6 col-md-4 {% if qtde == '10' %}cota-minima-wrap{% endif %}">
-        {% if qtde == '10' %}
-          <span class="badge-cota-minima">Cota mínima</span>
-        {% endif %}
-        <button class="btn btn-outline-secondary w-100 py-2" onclick="somarCotas({{ qtde }})">
-          +{{ qtde }}<br><small>Selecionar</small>
-        </button>
-      </div>
-      {% endfor %}
+        <div class="col-6 col-md-4">
+          {% if qtde|stringformat:"s" == '10' %}
+          <div class="cota-minima-wrap text-center">
+            <span class="badge-cota-minima badge">COTA RECOMENDADA</span>
+            <div style="margin-top:6px;">
+              <button class="btn btn-outline-secondary w-100 py-2" onclick="somarCotas({{ qtde }})">
+                +{{ qtde }}<br><small>Selecionar</small>
+              </button>
+            </div>
+          </div>
+          {% else %}
+          <button class="btn btn-outline-secondary w-100 py-2" onclick="somarCotas({{ qtde }})">
+            +{{ qtde }}<br><small>Selecionar</small>
+          </button>
+          {% endif %}
+        </div>
+        {% endfor %}
     </div>
 
   <!-- Área de gerenciamento removida (agora apenas via modal na listagem) -->
@@ -155,7 +163,7 @@
         class="form-control text-center"
         aria-label="Quantidade de números"
         style="width:70px;"
-        value="10"
+  value="1"
         autocomplete="off"
         data-preco="{{ rifa.preco|floatformat:2 }}"
       >
@@ -238,7 +246,7 @@
 
 <script>
 (function() {
-  const MIN_QTD = 10;
+  const MIN_QTD = 1;
 
   const input      = document.getElementById('input-cotas');
   const minus      = document.getElementById('btn-minus');
@@ -261,17 +269,23 @@
   }
 
   function atualizar() {
-    // mantém somente dígitos; permite vazio
+    // mantém somente dígitos
     let v = input.value.replace(/\D/g,'');
     input.value = v;
-    const qtd = parseInt(v,10) || 0;
+    let qtd = parseInt(v,10) || 0;
+
+    // nunca permitir 0: força mínimo
+    if (qtd < MIN_QTD) {
+      qtd = MIN_QTD;
+      input.value = String(MIN_QTD);
+    }
 
     const total = precoUnit * qtd;
     if (spanTot) spanTot.textContent = `Total: ${formatBRL(total)}`;
     if (spanBtn) spanBtn.textContent = formatBRL(total);
 
     if (minus) {
-      if (qtd <= 0) minus.setAttribute('disabled','disabled');
+      if (qtd <= MIN_QTD) minus.setAttribute('disabled','disabled');
       else minus.removeAttribute('disabled');
     }
 
@@ -287,18 +301,8 @@
     input.addEventListener(ev, atualizar);
   });
 
-  plus?.addEventListener('click', () => {
-    let qtd = parseInt(input.value,10) || 0;
-    input.value = (qtd + 1).toString();
-    atualizar();
-  });
-
-  minus?.addEventListener('click', () => {
-    let qtd = parseInt(input.value,10) || 0;
-    qtd = Math.max(0, qtd - 1);
-    input.value = qtd ? qtd.toString() : '';
-    atualizar();
-  });
+  // Observação: os botões plus/minus são tratados por delegação em `static/js/main.js`.
+  // Removemos os handlers inline para evitar incremento duplo.
 
   // Botões rápidos (+10, +20, etc.)
   window.somarCotas = function(qtde) {
@@ -314,7 +318,8 @@
     if (qtd < MIN_QTD) {
       e.preventDefault();
       if (alertMin) {
-        alertMin.textContent = 'A compra MÍNIMA para este sorteio é de 10 BILHETES.';
+        const unidade = MIN_QTD === 1 ? 'bilhete' : 'bilhetes';
+        alertMin.textContent = `A compra mínima para este sorteio é de ${MIN_QTD} ${unidade}.`;
         alertMin.classList.remove('d-none');
       }
       return;
