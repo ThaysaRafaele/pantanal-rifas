@@ -305,7 +305,7 @@
     input.addEventListener(ev, atualizar);
   });
 
-  // Botões +/-
+  // Botões plus/minus
   if (plus) {
     plus.addEventListener('click', function() {
       let qtd = parseInt(input.value,10) || 0;
@@ -332,7 +332,7 @@
     atualizar();
   };
 
-  // Validação ao adquirir 
+  // Validação ao adquirir
   btnAdq?.addEventListener('click', (e) => {
     const qtd = parseInt(input.value,10) || 0;
     if (qtd < MIN_QTD) {
@@ -353,12 +353,16 @@
       valor: valorFormatado,
       quantidade: qtd,
       rifaId: rifaId,
+      rifaIdType: typeof rifaId,
       precoUnit: precoUnit
     });
     
+    // Garantir que rifaId seja uma string válida
+    const rifaIdString = rifaId ? String(rifaId) : null;
+    
     // Chamar função do modal com todos os parâmetros necessários
     if (typeof openPaymentModal === 'function') {
-      openPaymentModal(valorFormatado, qtd, rifaId);
+      openPaymentModal(valorFormatado, qtd, rifaIdString);
     } else {
       console.error('Função openPaymentModal não encontrada');
       alert('Erro: Modal de pagamento não disponível');

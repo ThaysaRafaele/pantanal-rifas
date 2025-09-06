@@ -382,7 +382,6 @@
     color: #ccc;
   }
 
-  /* DEBUG: Forçar visibilidade das ações */
   #payActions {
     display: block !important;
     margin-top: 20px;
@@ -418,18 +417,47 @@
   let currentRifaId = null;
   let paymentCheckInterval = null;
 
-  // abrir modal
+  // Função openPaymentModal com validação completa
   function openPaymentModal(valorTotal, quantidade = 1, rifaId = null) {
-    console.log('Abrindo modal:', { valorTotal, quantidade, rifaId });
-    document.getElementById('payValorTotal').textContent = valorTotal;
-    currentQuantidade = quantidade;
+    console.log('🚀 Abrindo modal de pagamento:', { 
+      valorTotal, 
+      quantidade, 
+      rifaId,
+      typeOfRifaId: typeof rifaId 
+    });
+    
+    // Validar se rifaId foi passado
+    if (!rifaId) {
+      console.error('❌ rifaId não foi fornecido para openPaymentModal');
+      alert('Erro: ID da rifa não encontrado. Recarregue a página e tente novamente.');
+      return;
+    }
+    
+    // Armazenar valores globalmente
     currentRifaId = rifaId;
+    currentQuantidade = quantidade;
+    currentPedidoId = null;
+    
+    console.log('✅ Valores salvos:', {
+      currentRifaId,
+      currentQuantidade,
+      currentPedidoId
+    });
+    
+    // Atualizar interface
+    document.getElementById('payValorTotal').textContent = valorTotal;
     
     // Reset do modal
     resetModal();
     
+    // Mostrar modal
     document.getElementById('paymentBackdrop').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    
+    // Focar no campo CPF
+    setTimeout(() => {
+      document.getElementById('payCpf').focus();
+    }, 100);
   }
 
   // Fechar modal
@@ -445,7 +473,8 @@
 
   // Reset completo do modal
   function resetModal() {
-    console.log('Resetando modal');
+    console.log('🔄 Resetando modal');
+    
     // Mostrar etapa 1, esconder etapa 2
     document.getElementById('stepCpfVerification').style.display = 'block';
     document.getElementById('stepPaymentProcessing').style.display = 'none';
@@ -454,44 +483,40 @@
     document.getElementById('payCpf').value = '';
     document.getElementById('payUserBox').style.display = 'none';
     document.getElementById('payUserNotFound').style.display = 'none';
-    
-    const payActions = document.getElementById('payActions');
-    payActions.style.display = 'none';
-    payActions.className = 'hidden';
-    
+    document.getElementById('payActions').style.display = 'none';
     document.getElementById('payCpfInvalid').style.display = 'none';
     
-    currentPedidoId = null;
+    // Reset QR area
+    document.getElementById('qrLoading').style.display = 'block';
+    document.getElementById('modalQrImage').style.display = 'none';
+    document.getElementById('pixCodeContainer').style.display = 'none';
+    document.getElementById('btnCheckStatus').style.display = 'none';
   }
 
   // Verificar CPF
   function verificarCpf(event) {
     event.preventDefault();
-    console.log('Verificando CPF...');
+    console.log('🔍 Verificando CPF...');
     
     const cpfRaw = document.getElementById('payCpf').value.trim();
     const cpf = cpfRaw.replace(/\D/g, '');
     
     console.log('CPF digitado:', cpfRaw, 'CPF limpo:', cpf);
     
-    // Resetar elementos
+    // Reset elementos
     document.getElementById('payUserBox').style.display = 'none';
     document.getElementById('payUserNotFound').style.display = 'none';
-    
-    const payActions = document.getElementById('payActions');
-    payActions.style.display = 'none';
-    payActions.className = 'hidden';
-    
+    document.getElementById('payActions').style.display = 'none';
     document.getElementById('payCpfInvalid').style.display = 'none';
 
     // Validar CPF
     if (!isValidCPF(cpf)) {
-      console.log('CPF inválido');
+      console.log('❌ CPF inválido');
       document.getElementById('payCpfInvalid').style.display = 'block';
       return false;
     }
 
-    console.log('CPF válido, consultando backend...');
+    console.log('✅ CPF válido, consultando backend...');
 
     // Verificar CPF no backend
     fetch('/api/verificar-cpf/', {
@@ -504,7 +529,7 @@
     })
     .then(r => r.json())
     .then(data => {
-      console.log('Resposta do backend:', data);
+      console.log('📥 Resposta do backend:', data);
       
       if (data && data.found) {
         const u = data.user || {};
@@ -512,48 +537,65 @@
         document.getElementById('payUserEmail').textContent = u.email || '—';
         document.getElementById('payUserTelefone').textContent = u.telefone || '—';
         
-        // Mostrar dados do usuário
+        // Mostrar dados do usuário e ações
         document.getElementById('payUserBox').style.display = 'block';
+        document.getElementById('payActions').style.display = 'block';
         
-        // Mostrar ações
-        console.log('Mostrando botões de ação...');
-        payActions.style.display = 'block';
-        payActions.className = '';
-        
-        // Debug: forçar visibilidade
-        setTimeout(() => {
-          console.log('Estado final do payActions:', {
-            display: payActions.style.display,
-            className: payActions.className,
-            visible: payActions.offsetHeight > 0
-          });
-        }, 100);
+        console.log('✅ Usuário encontrado, botões habilitados');
         
       } else {
-        console.log('CPF não encontrado');
+        console.log('❌ CPF não encontrado');
         document.getElementById('payUserNotFound').style.display = 'block';
       }
     })
     .catch(err => {
-      console.error('Erro verificando CPF', err);
+      console.error('❌ Erro verificando CPF', err);
       document.getElementById('payUserNotFound').style.display = 'block';
     });
 
     return false;
   }
 
-  // Processar pagamento
+  // Processar pagamento com validação de rifaId
   function processarPagamento() {
-    console.log('Processando pagamento...');
+    console.log('💳 Processando pagamento...');
+    console.log('🔍 Estado atual:', {
+      currentRifaId,
+      currentQuantidade,
+      currentPedidoId,
+      typeOfCurrentRifaId: typeof currentRifaId
+    });
     
-    if (!currentRifaId) {
-      alert('Erro: ID da rifa não encontrado');
+    // DEBUG: Tentar recuperar rifaId de outras fontes se necessário
+    if (!currentRifaId || currentRifaId === 'null') {
+      console.warn('🚨 currentRifaId está vazio, tentando recuperar...');
+      
+      // Tentar obter do data-attribute da seção
+      const section = document.querySelector('.sorteios-section');
+      if (section && section.dataset.rifaId) {
+        currentRifaId = String(section.dataset.rifaId);
+        console.log('✅ rifaId recuperado da seção:', currentRifaId);
+      }
+      
+      // Tentar obter do input
+      const input = document.getElementById('input-cotas');
+      if (!currentRifaId && input && input.dataset.rifaId) {
+        currentRifaId = String(input.dataset.rifaId);
+        console.log('✅ rifaId recuperado do input:', currentRifaId);
+      }
+    }
+    
+    // Verificar se temos rifaId
+    if (!currentRifaId || currentRifaId === 'null' || currentRifaId === 'undefined') {
+      console.error('❌ currentRifaId ainda não está definido após tentativas de recuperação');
+      alert('Erro: ID da rifa não encontrado. Recarregue a página e tente novamente.');
       return;
     }
 
     const cpf = document.getElementById('payCpf').value.replace(/\D/g, '');
     const btnPagar = document.getElementById('btnPagar');
     
+    // Desabilitar botão
     btnPagar.disabled = true;
     btnPagar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
 
@@ -562,6 +604,12 @@
     formData.append('rifa_id', currentRifaId);
     formData.append('cpf', cpf);
     formData.append('quantidade', currentQuantidade);
+
+    console.log('📤 Enviando dados:', {
+      rifa_id: currentRifaId,
+      cpf: cpf,
+      quantidade: currentQuantidade
+    });
 
     fetch('/api/criar-pedido/', {
       method: 'POST',
@@ -572,10 +620,11 @@
     })
     .then(response => response.json())
     .then(data => {
-      console.log('Resposta criar pedido:', data);
+      console.log('📥 Resposta criar pedido:', data);
       
       if (data.success) {
         currentPedidoId = data.pedido_id;
+        console.log('✅ Pedido criado com ID:', currentPedidoId);
         
         // Mostrar prêmios ganhos se houver
         if (data.premios_ganhos && data.premios_ganhos.length > 0) {
@@ -593,24 +642,32 @@
         // Gerar QR Code
         gerarQRCode();
       } else {
+        console.error('❌ Erro ao criar pedido:', data.error);
         alert(data.error || 'Erro ao criar pedido');
+        
+        // Reativar botão
         btnPagar.disabled = false;
         btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
       }
     })
     .catch(error => {
-      console.error('Erro:', error);
+      console.error('❌ Erro na requisição:', error);
       alert('Erro ao processar pagamento');
+      
+      // Reativar botão
       btnPagar.disabled = false;
       btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
     });
   }
 
-  //Gerar QR Code
+  // Gerar QR Code
   function gerarQRCode() {
-    console.log('Gerando QR Code para pedido:', currentPedidoId);
+    console.log('🔄 Gerando QR Code para pedido:', currentPedidoId);
     
-    if (!currentPedidoId) return;
+    if (!currentPedidoId) {
+      console.error('❌ currentPedidoId não está definido');
+      return;
+    }
 
     fetch('/api/gerar-qr/', {
       method: 'POST',
@@ -624,34 +681,39 @@
     })
     .then(response => response.json())
     .then(data => {
-      console.log('Resposta gerar QR:', data);
+      console.log('📥 Resposta gerar QR:', data);
       
       document.getElementById('qrLoading').style.display = 'none';
       
       if (data.success) {
+        console.log('✅ QR Code gerado com sucesso');
+        
         // Mostrar QR Code
         if (data.qr_code_base64) {
           const img = document.getElementById('modalQrImg');
           img.src = `data:image/png;base64,${data.qr_code_base64}`;
           document.getElementById('modalQrImage').style.display = 'block';
+          console.log('✅ QR Code Base64 exibido');
         }
         
         // Mostrar código PIX
         if (data.qr_code) {
           document.getElementById('modalQrRaw').textContent = data.qr_code;
           document.getElementById('pixCodeContainer').style.display = 'block';
+          console.log('✅ Código PIX exibido');
         }
         
-        // verificação automática
+        // Habilitar verificação automática
         document.getElementById('btnCheckStatus').style.display = 'inline-block';
         startPaymentCheck();
         
       } else {
+        console.error('❌ Erro ao gerar QR:', data.error);
         alert(data.error || 'Erro ao gerar QR Code');
       }
     })
     .catch(error => {
-      console.error('Erro ao gerar QR:', error);
+      console.error('❌ Erro ao gerar QR:', error);
       document.getElementById('qrLoading').style.display = 'none';
       alert('Erro ao gerar QR Code');
     });
@@ -664,6 +726,7 @@
     fetch(`/api/pedido/${currentPedidoId}/status/`)
     .then(response => response.json())
     .then(data => {
+      console.log('📊 Status do pagamento:', data);
       if (data.success && data.status === 'pago') {
         alert('Pagamento confirmado! Recarregando página...');
         setTimeout(() => {
@@ -672,11 +735,11 @@
       }
     })
     .catch(error => {
-      console.error('Erro ao verificar pagamento:', error);
+      console.error('❌ Erro ao verificar pagamento:', error);
     });
   }
 
-  // verificação automática do pagamento
+  // Verificação automática do pagamento
   function startPaymentCheck() {
     if (paymentCheckInterval) {
       clearInterval(paymentCheckInterval);
@@ -707,14 +770,10 @@
   }
 
   function resetarCpfPagamento() {
-    console.log('Resetando CPF...');
+    console.log('🔄 Resetando CPF...');
     document.getElementById('payCpf').value = '';
     document.getElementById('payUserBox').style.display = 'none';
-    
-    const payActions = document.getElementById('payActions');
-    payActions.style.display = 'none';
-    payActions.className = 'hidden';
-    
+    document.getElementById('payActions').style.display = 'none';
     document.getElementById('payUserNotFound').style.display = 'none';
     document.getElementById('payCpfInvalid').style.display = 'none';
     
@@ -762,10 +821,7 @@
     }
   });
 
+  // Expor funções globalmente
   window.openPaymentModal = openPaymentModal;
   window.closePaymentModal = closePaymentModal;
-
-  function fazerPagamento() {
-    processarPagamento();
-  }
 </script>
