@@ -18,3 +18,26 @@
     </div>
   </div>
 </div>
+
+<script>
+// Script para modal de buscar números
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('formBuscarNumeros');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const telefone = document.getElementById('telefoneBusca').value;
+      const resultado = document.getElementById('resultadoNumeros');
+      
+      if (telefone.trim()) {
+        resultado.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div> Buscando...</div>';
+        
+        // Simular busca (substitua pela sua lógica real)
+        setTimeout(() => {
+          resultado.innerHTML = '<div class="alert alert-info">Funcionalidade de busca será implementada aqui.</div>';
+        }, 1000);
+      }
+    });
+  }
+});
+</script>

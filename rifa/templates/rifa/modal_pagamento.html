@@ -1,3 +1,9 @@
+<!-- CAMPOS HIDDEN PARA DADOS DO PEDIDO -->
+<input type="hidden" id="hiddenRifaId" value="">
+<input type="hidden" id="hiddenQuantidade" value="">
+<input type="hidden" id="hiddenValorTotal" value="">
+<input type="hidden" id="hiddenPedidoId" value="">
+
 <div class="payment-backdrop" id="paymentBackdrop" style="display:none;">
   <div class="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payTitle">
     <button class="pay-close" type="button" aria-label="Fechar" onclick="closePaymentModal()">×</button>
@@ -6,6 +12,7 @@
     <div id="stepCpfVerification">
       <h3 id="payTitle" class="pay-title">💳 Finalize sua compra</h3>
       <p class="pay-total">Valor total: <span id="payValorTotal">R$ 0,00</span></p>
+      <p class="pay-quantity">Quantidade: <span id="payQuantidade">1</span> número(s)</p>
 
       <form id="payForm" onsubmit="return verificarCpf(event)">
         <!-- CPF -->
@@ -41,7 +48,7 @@
           <a href="/cadastro/" class="alert-link fw-bold">Faça seu cadastro aqui</a>
         </div>
 
-        <!-- Ações  -->
+        <!-- Ações -->
         <div id="payActions" style="display:none;margin-top:20px;">
           <button class="btn btn-success w-100 mb-3" id="btnPagar" type="button" onclick="processarPagamento()">
             <i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento
@@ -59,12 +66,6 @@
         <i class="fas fa-check-circle me-2"></i>Pedido Criado!
       </h3>
       <p class="text-center text-muted mb-4">Seus números foram reservados</p>
-
-      <!-- Status do pagamento -->
-      <div id="paymentStatus" class="text-center mb-3">
-        <span id="statusText">Gerando PIX...</span>
-        <span id="statusBadge" class="status-badge status-pending">Pendente</span>
-      </div>
 
       <!-- Área do QR Code -->
       <div id="modalQrArea" class="qr-code-area">
@@ -189,11 +190,23 @@
     font-size: 1.3rem;
     color: #28a745;
     font-weight: bold;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     padding: 15px;
     background: rgba(40, 167, 69, 0.1);
     border: 1px solid rgba(40, 167, 69, 0.3);
     border-radius: 10px;
+  }
+
+  .pay-quantity {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #ffd700;
+    font-weight: bold;
+    margin-bottom: 25px;
+    padding: 10px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
   }
 
   .form-control {
@@ -338,27 +351,6 @@
     to { transform: rotate(360deg); }
   }
 
-  .status-badge {
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    margin-left: 10px;
-  }
-
-  .status-pending {
-    background: rgba(255, 193, 7, 0.2);
-    color: #ffc107;
-    border: 1px solid #ffc107;
-  }
-
-  .status-approved {
-    background: rgba(40, 167, 69, 0.2);
-    color: #28a745;
-    border: 1px solid #28a745;
-  }
-
   .payment-instructions {
     background: rgba(0, 123, 255, 0.1);
     border: 1px solid rgba(0, 123, 255, 0.3);
@@ -391,10 +383,6 @@
     border-radius: 10px;
   }
 
-  #payActions.hidden {
-    display: none !important;
-  }
-
   @media (max-width: 576px) {
     .payment-modal {
       margin: 10px;
@@ -412,416 +400,425 @@
 </style>
 
 <script>
-  let currentPedidoId = null;
-  let currentQuantidade = 1;
-  let currentRifaId = null;
-  let paymentCheckInterval = null;
+// Variáveis globais para armazenar dados do pedido
+let currentPedidoId = null;
+let currentQuantidade = 1;
+let currentRifaId = null;
+let currentValorTotal = 0;
+let paymentCheckInterval = null;
 
-  // Função openPaymentModal com validação completa
-  function openPaymentModal(valorTotal, quantidade = 1, rifaId = null) {
-    console.log('🚀 Abrindo modal de pagamento:', { 
-      valorTotal, 
-      quantidade, 
-      rifaId,
-      typeOfRifaId: typeof rifaId 
-    });
-    
-    // Validar se rifaId foi passado
-    if (!rifaId) {
-      console.error('❌ rifaId não foi fornecido para openPaymentModal');
-      alert('Erro: ID da rifa não encontrado. Recarregue a página e tente novamente.');
-      return;
-    }
-    
-    // Armazenar valores globalmente
-    currentRifaId = rifaId;
-    currentQuantidade = quantidade;
-    currentPedidoId = null;
-    
-    console.log('✅ Valores salvos:', {
-      currentRifaId,
-      currentQuantidade,
-      currentPedidoId
-    });
-    
-    // Atualizar interface
-    document.getElementById('payValorTotal').textContent = valorTotal;
-    
-    // Reset do modal
-    resetModal();
-    
-    // Mostrar modal
-    document.getElementById('paymentBackdrop').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    
-    // Focar no campo CPF
-    setTimeout(() => {
-      document.getElementById('payCpf').focus();
-    }, 100);
+// Função principal: openPaymentModal corrigida
+function openPaymentModal(valorTotal, quantidade, rifaId) {
+  console.log('🚀 MODAL: openPaymentModal chamado:', { 
+    valorTotal, 
+    quantidade, 
+    rifaId,
+    typeOfRifaId: typeof rifaId 
+  });
+  
+  // Validar parâmetros obrigatórios
+  if (!rifaId) {
+    console.error('❌ ERRO: rifaId não fornecido');
+    alert('Erro: ID da rifa não encontrado. Recarregue a página.');
+    return;
   }
-
-  // Fechar modal
-  function closePaymentModal() {
-    document.getElementById('paymentBackdrop').style.display = 'none';
-    document.body.style.overflow = 'auto';
-    
-    if (paymentCheckInterval) {
-      clearInterval(paymentCheckInterval);
-      paymentCheckInterval = null;
-    }
+  
+  if (!quantidade || quantidade < 1) {
+    console.error('❌ ERRO: quantidade inválida');
+    alert('Erro: Quantidade inválida.');
+    return;
   }
+  
+  // Armazenar dados globalmente
+  currentRifaId = String(rifaId);
+  currentQuantidade = parseInt(quantidade, 10);
+  currentValorTotal = parseFloat(valorTotal.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
+  currentPedidoId = null;
+  
+  // Salvar nos campos hidden também
+  document.getElementById('hiddenRifaId').value = currentRifaId;
+  document.getElementById('hiddenQuantidade').value = currentQuantidade;
+  document.getElementById('hiddenValorTotal').value = currentValorTotal;
+  
+  console.log('✅ MODAL: Dados salvos:', {
+    currentRifaId,
+    currentQuantidade,
+    currentValorTotal
+  });
+  
+  // Atualizar interface do modal
+  document.getElementById('payValorTotal').textContent = valorTotal;
+  document.getElementById('payQuantidade').textContent = currentQuantidade;
+  
+  // Reset e mostrar modal
+  resetModal();
+  document.getElementById('paymentBackdrop').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  // Focar no campo CPF
+  setTimeout(() => {
+    const cpfField = document.getElementById('payCpf');
+    if (cpfField) cpfField.focus();
+  }, 100);
+}
 
-  // Reset completo do modal
-  function resetModal() {
-    console.log('🔄 Resetando modal');
-    
-    // Mostrar etapa 1, esconder etapa 2
-    document.getElementById('stepCpfVerification').style.display = 'block';
-    document.getElementById('stepPaymentProcessing').style.display = 'none';
-    
-    // Limpar dados
-    document.getElementById('payCpf').value = '';
-    document.getElementById('payUserBox').style.display = 'none';
-    document.getElementById('payUserNotFound').style.display = 'none';
-    document.getElementById('payActions').style.display = 'none';
-    document.getElementById('payCpfInvalid').style.display = 'none';
-    
-    // Reset QR area
-    document.getElementById('qrLoading').style.display = 'block';
-    document.getElementById('modalQrImage').style.display = 'none';
-    document.getElementById('pixCodeContainer').style.display = 'none';
-    document.getElementById('btnCheckStatus').style.display = 'none';
+// Fechar modal
+function closePaymentModal() {
+  document.getElementById('paymentBackdrop').style.display = 'none';
+  document.body.style.overflow = 'auto';
+  
+  if (paymentCheckInterval) {
+    clearInterval(paymentCheckInterval);
+    paymentCheckInterval = null;
   }
+}
 
-  // Verificar CPF
-  function verificarCpf(event) {
-    event.preventDefault();
-    console.log('🔍 Verificando CPF...');
-    
-    const cpfRaw = document.getElementById('payCpf').value.trim();
-    const cpf = cpfRaw.replace(/\D/g, '');
-    
-    console.log('CPF digitado:', cpfRaw, 'CPF limpo:', cpf);
-    
-    // Reset elementos
-    document.getElementById('payUserBox').style.display = 'none';
-    document.getElementById('payUserNotFound').style.display = 'none';
-    document.getElementById('payActions').style.display = 'none';
-    document.getElementById('payCpfInvalid').style.display = 'none';
+// Reset completo do modal
+function resetModal() {
+  console.log('🔄 MODAL: Resetando modal');
+  
+  // Mostrar etapa 1, esconder etapa 2
+  document.getElementById('stepCpfVerification').style.display = 'block';
+  document.getElementById('stepPaymentProcessing').style.display = 'none';
+  
+  // Limpar dados
+  document.getElementById('payCpf').value = '';
+  document.getElementById('payUserBox').style.display = 'none';
+  document.getElementById('payUserNotFound').style.display = 'none';
+  document.getElementById('payActions').style.display = 'none';
+  document.getElementById('payCpfInvalid').style.display = 'none';
+  
+  // Reset QR area
+  document.getElementById('qrLoading').style.display = 'block';
+  document.getElementById('modalQrImage').style.display = 'none';
+  document.getElementById('pixCodeContainer').style.display = 'none';
+  document.getElementById('btnCheckStatus').style.display = 'none';
+}
 
-    // Validar CPF
-    if (!isValidCPF(cpf)) {
-      console.log('❌ CPF inválido');
-      document.getElementById('payCpfInvalid').style.display = 'block';
-      return false;
-    }
+// Verificar CPF
+function verificarCpf(event) {
+  event.preventDefault();
+  console.log('🔍 MODAL: Verificando CPF...');
+  
+  const cpfRaw = document.getElementById('payCpf').value.trim();
+  const cpf = cpfRaw.replace(/\D/g, '');
+  
+  // Reset elementos
+  document.getElementById('payUserBox').style.display = 'none';
+  document.getElementById('payUserNotFound').style.display = 'none';
+  document.getElementById('payActions').style.display = 'none';
+  document.getElementById('payCpfInvalid').style.display = 'none';
 
-    console.log('✅ CPF válido, consultando backend...');
-
-    // Verificar CPF no backend
-    fetch('/api/verificar-cpf/', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken()
-      },
-      body: JSON.stringify({ cpf: cpf })
-    })
-    .then(r => r.json())
-    .then(data => {
-      console.log('📥 Resposta do backend:', data);
-      
-      if (data && data.found) {
-        const u = data.user || {};
-        document.getElementById('payUserNome').textContent = u.nome || '—';
-        document.getElementById('payUserEmail').textContent = u.email || '—';
-        document.getElementById('payUserTelefone').textContent = u.telefone || '—';
-        
-        // Mostrar dados do usuário e ações
-        document.getElementById('payUserBox').style.display = 'block';
-        document.getElementById('payActions').style.display = 'block';
-        
-        console.log('✅ Usuário encontrado, botões habilitados');
-        
-      } else {
-        console.log('❌ CPF não encontrado');
-        document.getElementById('payUserNotFound').style.display = 'block';
-      }
-    })
-    .catch(err => {
-      console.error('❌ Erro verificando CPF', err);
-      document.getElementById('payUserNotFound').style.display = 'block';
-    });
-
+  // Validar CPF
+  if (!isValidCPF(cpf)) {
+    console.log('❌ MODAL: CPF inválido');
+    document.getElementById('payCpfInvalid').style.display = 'block';
     return false;
   }
 
-  // Processar pagamento com validação de rifaId
-  function processarPagamento() {
-    console.log('💳 Processando pagamento...');
-    console.log('🔍 Estado atual:', {
-      currentRifaId,
-      currentQuantidade,
-      currentPedidoId,
-      typeOfCurrentRifaId: typeof currentRifaId
-    });
+  console.log('✅ MODAL: CPF válido, consultando backend...');
+
+  // Verificar CPF no backend
+  fetch('/api/verificar-cpf/', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify({ cpf: cpf })
+  })
+  .then(r => r.json())
+  .then(data => {
+    console.log('📥 MODAL: Resposta verificação CPF:', data);
     
-    // DEBUG: Tentar recuperar rifaId de outras fontes se necessário
-    if (!currentRifaId || currentRifaId === 'null') {
-      console.warn('🚨 currentRifaId está vazio, tentando recuperar...');
+    if (data && data.found) {
+      const u = data.user || {};
+      document.getElementById('payUserNome').textContent = u.nome || '—';
+      document.getElementById('payUserEmail').textContent = u.email || '—';
+      document.getElementById('payUserTelefone').textContent = u.telefone || '—';
       
-      // Tentar obter do data-attribute da seção
-      const section = document.querySelector('.sorteios-section');
-      if (section && section.dataset.rifaId) {
-        currentRifaId = String(section.dataset.rifaId);
-        console.log('✅ rifaId recuperado da seção:', currentRifaId);
-      }
+      // Mostrar dados do usuário e ações
+      document.getElementById('payUserBox').style.display = 'block';
+      document.getElementById('payActions').style.display = 'block';
       
-      // Tentar obter do input
-      const input = document.getElementById('input-cotas');
-      if (!currentRifaId && input && input.dataset.rifaId) {
-        currentRifaId = String(input.dataset.rifaId);
-        console.log('✅ rifaId recuperado do input:', currentRifaId);
-      }
+      console.log('✅ MODAL: Usuário encontrado, botões habilitados');
+      
+    } else {
+      console.log('❌ MODAL: CPF não encontrado');
+      document.getElementById('payUserNotFound').style.display = 'block';
     }
+  })
+  .catch(err => {
+    console.error('❌ MODAL: Erro verificando CPF', err);
+    document.getElementById('payUserNotFound').style.display = 'block';
+  });
+
+  return false;
+}
+
+// Processar pagamento com dados corretos
+function processarPagamento() {
+  console.log('💳 MODAL: Processando pagamento...');
+  console.log('🔍 MODAL: Estado atual:', {
+    currentRifaId,
+    currentQuantidade,
+    currentValorTotal,
+    currentPedidoId
+  });
+  
+  // Validar dados obrigatórios
+  if (!currentRifaId) {
+    console.error('❌ MODAL: currentRifaId não definido');
+    alert('Erro: ID da rifa não encontrado. Recarregue a página.');
+    return;
+  }
+  
+  if (!currentQuantidade || currentQuantidade < 1) {
+    console.error('❌ MODAL: currentQuantidade inválida');
+    alert('Erro: Quantidade inválida.');
+    return;
+  }
+
+  const cpf = document.getElementById('payCpf').value.replace(/\D/g, '');
+  const btnPagar = document.getElementById('btnPagar');
+  
+  // Desabilitar botão
+  btnPagar.disabled = true;
+  btnPagar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+
+  // Criar pedido com dados corretos
+  const formData = new FormData();
+  formData.append('rifa_id', currentRifaId);
+  formData.append('cpf', cpf);
+  formData.append('quantidade', currentQuantidade);
+
+  console.log('📤 MODAL: Enviando dados para criar pedido:', {
+    rifa_id: currentRifaId,
+    cpf: cpf,
+    quantidade: currentQuantidade
+  });
+
+  fetch('/api/criar-pedido/', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('📥 MODAL: Resposta criar pedido:', data);
     
-    // Verificar se temos rifaId
-    if (!currentRifaId || currentRifaId === 'null' || currentRifaId === 'undefined') {
-      console.error('❌ currentRifaId ainda não está definido após tentativas de recuperação');
-      alert('Erro: ID da rifa não encontrado. Recarregue a página e tente novamente.');
-      return;
-    }
-
-    const cpf = document.getElementById('payCpf').value.replace(/\D/g, '');
-    const btnPagar = document.getElementById('btnPagar');
-    
-    // Desabilitar botão
-    btnPagar.disabled = true;
-    btnPagar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
-
-    // Criar pedido
-    const formData = new FormData();
-    formData.append('rifa_id', currentRifaId);
-    formData.append('cpf', cpf);
-    formData.append('quantidade', currentQuantidade);
-
-    console.log('📤 Enviando dados:', {
-      rifa_id: currentRifaId,
-      cpf: cpf,
-      quantidade: currentQuantidade
-    });
-
-    fetch('/api/criar-pedido/', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': getCsrfToken()
-      },
-      body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('📥 Resposta criar pedido:', data);
+    if (data.success) {
+      currentPedidoId = data.pedido_id;
+      document.getElementById('hiddenPedidoId').value = currentPedidoId;
       
-      if (data.success) {
-        currentPedidoId = data.pedido_id;
-        console.log('✅ Pedido criado com ID:', currentPedidoId);
-        
-        // Mostrar prêmios ganhos se houver
-        if (data.premios_ganhos && data.premios_ganhos.length > 0) {
-          let premiosMsg = 'Parabéns! Você ganhou prêmios:\n';
-          data.premios_ganhos.forEach(p => {
-            premiosMsg += `🎉 Número ${p.numero}: R$ ${p.valor.toFixed(2)}\n`;
-          });
-          alert(premiosMsg);
-        }
-        
-        // Trocar para etapa 2
-        document.getElementById('stepCpfVerification').style.display = 'none';
-        document.getElementById('stepPaymentProcessing').style.display = 'block';
-        
-        // Gerar QR Code
-        gerarQRCode();
-      } else {
-        console.error('❌ Erro ao criar pedido:', data.error);
-        alert(data.error || 'Erro ao criar pedido');
-        
-        // Reativar botão
-        btnPagar.disabled = false;
-        btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
+      console.log('✅ MODAL: Pedido criado com ID:', currentPedidoId);
+      
+      // Mostrar prêmios ganhos se houver
+      if (data.premios_ganhos && data.premios_ganhos.length > 0) {
+        let premiosMsg = 'Parabéns! Você ganhou prêmios:\n';
+        data.premios_ganhos.forEach(p => {
+          premiosMsg += `🎉 Número ${p.numero}: R$ ${p.valor.toFixed(2)}\n`;
+        });
+        alert(premiosMsg);
       }
-    })
-    .catch(error => {
-      console.error('❌ Erro na requisição:', error);
-      alert('Erro ao processar pagamento');
+      
+      // Trocar para etapa 2
+      document.getElementById('stepCpfVerification').style.display = 'none';
+      document.getElementById('stepPaymentProcessing').style.display = 'block';
+      
+      // Gerar QR Code
+      gerarQRCode();
+    } else {
+      console.error('❌ MODAL: Erro ao criar pedido:', data.error);
+      alert(data.error || 'Erro ao criar pedido');
       
       // Reativar botão
       btnPagar.disabled = false;
       btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
-    });
-  }
-
-  // Gerar QR Code
-  function gerarQRCode() {
-    console.log('🔄 Gerando QR Code para pedido:', currentPedidoId);
-    
-    if (!currentPedidoId) {
-      console.error('❌ currentPedidoId não está definido');
-      return;
     }
-
-    fetch('/api/gerar-qr/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken()
-      },
-      body: JSON.stringify({
-        pedido_id: currentPedidoId
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('📥 Resposta gerar QR:', data);
-      
-      document.getElementById('qrLoading').style.display = 'none';
-      
-      if (data.success) {
-        console.log('✅ QR Code gerado com sucesso');
-        
-        // Mostrar QR Code
-        if (data.qr_code_base64) {
-          const img = document.getElementById('modalQrImg');
-          img.src = `data:image/png;base64,${data.qr_code_base64}`;
-          document.getElementById('modalQrImage').style.display = 'block';
-          console.log('✅ QR Code Base64 exibido');
-        }
-        
-        // Mostrar código PIX
-        if (data.qr_code) {
-          document.getElementById('modalQrRaw').textContent = data.qr_code;
-          document.getElementById('pixCodeContainer').style.display = 'block';
-          console.log('✅ Código PIX exibido');
-        }
-        
-        // Habilitar verificação automática
-        document.getElementById('btnCheckStatus').style.display = 'inline-block';
-        startPaymentCheck();
-        
-      } else {
-        console.error('❌ Erro ao gerar QR:', data.error);
-        alert(data.error || 'Erro ao gerar QR Code');
-      }
-    })
-    .catch(error => {
-      console.error('❌ Erro ao gerar QR:', error);
-      document.getElementById('qrLoading').style.display = 'none';
-      alert('Erro ao gerar QR Code');
-    });
-  }
-
-  // Verificar status do pagamento
-  function checkPaymentStatus() {
-    if (!currentPedidoId) return;
-
-    fetch(`/api/pedido/${currentPedidoId}/status/`)
-    .then(response => response.json())
-    .then(data => {
-      console.log('📊 Status do pagamento:', data);
-      if (data.success && data.status === 'pago') {
-        alert('Pagamento confirmado! Recarregando página...');
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      }
-    })
-    .catch(error => {
-      console.error('❌ Erro ao verificar pagamento:', error);
-    });
-  }
-
-  // Verificação automática do pagamento
-  function startPaymentCheck() {
-    if (paymentCheckInterval) {
-      clearInterval(paymentCheckInterval);
-    }
+  })
+  .catch(error => {
+    console.error('❌ MODAL: Erro na requisição criar pedido:', error);
+    alert('Erro ao processar pagamento');
     
-    paymentCheckInterval = setInterval(() => {
-      checkPaymentStatus();
-    }, 10000); 
-  }
-
-  // Copiar código PIX
-  function copyPixCode() {
-    const pixCode = document.getElementById('modalQrRaw').textContent;
-    navigator.clipboard.writeText(pixCode).then(() => {
-      alert('Código PIX copiado!');
-    }).catch(err => {
-      console.error('Erro ao copiar:', err);
-    });
-  }
-
-  // Download do QR Code
-  function downloadQR() {
-    const img = document.getElementById('modalQrImg');
-    const link = document.createElement('a');
-    link.download = 'qrcode-pix.png';
-    link.href = img.src;
-    link.click();
-  }
-
-  function resetarCpfPagamento() {
-    console.log('🔄 Resetando CPF...');
-    document.getElementById('payCpf').value = '';
-    document.getElementById('payUserBox').style.display = 'none';
-    document.getElementById('payActions').style.display = 'none';
-    document.getElementById('payUserNotFound').style.display = 'none';
-    document.getElementById('payCpfInvalid').style.display = 'none';
-    
-    document.getElementById('payCpf').focus();
-  }
-
-  // Validação de CPF 
-  function isValidCPF(digits) {
-    if (!digits || digits.length !== 11) return false;
-    if (/^(\d)\1{10}$/.test(digits)) return false;
-    
-    const nums = digits.split('').map(d => parseInt(d, 10));
-
-    let sum = 0;
-    for (let i = 0; i < 9; i++) sum += nums[i] * (10 - i);
-    let rev = (sum * 10) % 11;
-    if (rev === 10) rev = 0;
-    if (rev !== nums[9]) return false;
-
-    sum = 0;
-    for (let i = 0; i < 10; i++) sum += nums[i] * (11 - i);
-    rev = (sum * 10) % 11;
-    if (rev === 10) rev = 0;
-    if (rev !== nums[10]) return false;
-
-    return true;
-  }
-
-  // Obter CSRF Token
-  function getCsrfToken() {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-  }
-
-  // Máscara para CPF
-  document.addEventListener('DOMContentLoaded', function() {
-    const cpfInput = document.getElementById('payCpf');
-    if (cpfInput) {
-      cpfInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        e.target.value = value;
-      });
-    }
+    // Reativar botão
+    btnPagar.disabled = false;
+    btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
   });
+}
 
-  // Expor funções globalmente
-  window.openPaymentModal = openPaymentModal;
-  window.closePaymentModal = closePaymentModal;
-</script>
+// Gerar QR Code
+function gerarQRCode() {
+  console.log('🔄 MODAL: Gerando QR Code para pedido:', currentPedidoId);
+  
+  if (!currentPedidoId) {
+    console.error('❌ MODAL: currentPedidoId não definido');
+    return;
+  }
+
+  fetch('/api/gerar-qr/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify({
+      pedido_id: currentPedidoId
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('📥 MODAL: Resposta gerar QR:', data);
+    
+    document.getElementById('qrLoading').style.display = 'none';
+    
+    if (data.success) {
+      console.log('✅ MODAL: QR Code gerado com sucesso');
+      
+      // Mostrar QR Code
+      if (data.qr_code_base64) {
+        const img = document.getElementById('modalQrImg');
+        img.src = `data:image/png;base64,${data.qr_code_base64}`;
+        document.getElementById('modalQrImage').style.display = 'block';
+        console.log('✅ MODAL: QR Code Base64 exibido');
+      }
+      
+      // Mostrar código PIX
+      if (data.qr_code) {
+        document.getElementById('modalQrRaw').textContent = data.qr_code;
+        document.getElementById('pixCodeContainer').style.display = 'block';
+        console.log('✅ MODAL: Código PIX exibido');
+      }
+      
+      // Habilitar verificação automática
+      document.getElementById('btnCheckStatus').style.display = 'inline-block';
+      startPaymentCheck();
+      
+    } else {
+      console.error('❌ MODAL: Erro ao gerar QR:', data.error);
+      alert(data.error || 'Erro ao gerar QR Code');
+    }
+  })
+  .catch(error => {
+    console.error('❌ MODAL: Erro ao gerar QR:', error);
+    document.getElementById('qrLoading').style.display = 'none';
+    alert('Erro ao gerar QR Code');
+  });
+}
+
+// Verificar status do pagamento
+function checkPaymentStatus() {
+  if (!currentPedidoId) return;
+
+  fetch(`/api/pedido/${currentPedidoId}/status/`)
+  .then(response => response.json())
+  .then(data => {
+    console.log('📊 MODAL: Status do pagamento:', data);
+    if (data.success && data.status === 'pago') {
+      alert('Pagamento confirmado! Recarregando página...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  })
+  .catch(error => {
+    console.error('❌ MODAL: Erro ao verificar pagamento:', error);
+  });
+}
+
+// Verificação automática do pagamento
+function startPaymentCheck() {
+  if (paymentCheckInterval) {
+    clearInterval(paymentCheckInterval);
+  }
+  
+  paymentCheckInterval = setInterval(() => {
+    checkPaymentStatus();
+  }, 10000); 
+}
+
+// Copiar código PIX
+function copyPixCode() {
+  const pixCode = document.getElementById('modalQrRaw').textContent;
+  navigator.clipboard.writeText(pixCode).then(() => {
+    alert('Código PIX copiado!');
+  }).catch(err => {
+    console.error('Erro ao copiar:', err);
+  });
+}
+
+// Download do QR Code
+function downloadQR() {
+  const img = document.getElementById('modalQrImg');
+  const link = document.createElement('a');
+  link.download = 'qrcode-pix.png';
+  link.href = img.src;
+  link.click();
+}
+
+// Reset CPF
+function resetarCpfPagamento() {
+  console.log('🔄 MODAL: Resetando CPF...');
+  document.getElementById('payCpf').value = '';
+  document.getElementById('payUserBox').style.display = 'none';
+  document.getElementById('payActions').style.display = 'none';
+  document.getElementById('payUserNotFound').style.display = 'none';
+  document.getElementById('payCpfInvalid').style.display = 'none';
+  
+  document.getElementById('payCpf').focus();
+}
+
+// Validação de CPF 
+function isValidCPF(digits) {
+  if (!digits || digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  
+  const nums = digits.split('').map(d => parseInt(d, 10));
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += nums[i] * (10 - i);
+  let rev = (sum * 10) % 11;
+  if (rev === 10) rev = 0;
+  if (rev !== nums[9]) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += nums[i] * (11 - i);
+  rev = (sum * 10) % 11;
+  if (rev === 10) rev = 0;
+  if (rev !== nums[10]) return false;
+
+  return true;
+}
+
+// Obter CSRF Token
+function getCsrfToken() {
+  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// Máscara para CPF
+document.addEventListener('DOMContentLoaded', function() {
+  const cpfInput = document.getElementById('payCpf');
+  if (cpfInput) {
+    cpfInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      e.target.value = value;
+    });
+  }
+});
+
+// Eventos de fechar modal
+window.addEventListener('click', e => {
+  const backdrop = document.getElementById('paymentBackdrop');
+  if (e.target === backdrop) { 
+    closePaymentModal(); 
+  }
+});
+
+window.addEventListener('keydown', e => { 
+  if (e.key === 'Escape') closePaymentModal(); 
+});

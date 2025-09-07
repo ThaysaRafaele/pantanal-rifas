@@ -85,13 +85,11 @@
 <section class="sorteios-section d-flex justify-content-center align-items-start" data-rifa-id="{{ rifa.id }}">
   <div class="glass-login w-100">
 
-  <!-- Removidas abas de navegação para simplificar interface -->
-
     <!-- Imagem centralizada + badge posicionada -->
     <div class="text-center mb-3">
       {% if rifa.imagem %}
       <div class="raffle-img-box">
-  <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="img-fluid rounded shadow" style="width:180px;height:180px;object-fit:cover;" loading="lazy" decoding="async">
+        <img src="{{ rifa.imagem.url }}" alt="{{ rifa.titulo }}" class="img-fluid rounded shadow" style="width:180px;height:180px;object-fit:cover;" loading="lazy" decoding="async">
         {% if not rifa.encerrada %}
           <span class="badge bg-success blink-badge badge-adquira">Adquira já!</span>
         {% endif %}
@@ -99,7 +97,7 @@
       {% endif %}
     </div>
 
-    <!-- Título (sem "Adquira já!") -->
+    <!-- Título -->
     <h3 class="text-center fw-bold mb-2 text-white">
       {{ rifa.titulo }}
       {% if rifa.encerrada %}
@@ -109,7 +107,7 @@
 
     <p class="text-muted text-center mb-3">{{ rifa.descricao }}</p>
 
-    <!-- Substituído: bloco do preço com nova formatação -->
+    <!-- Bloco do preço -->
     <div class="price-line">
       <span class="price-label">POR APENAS</span>
       <span class="price-badge">R$ {{ rifa.preco|floatformat:2 }}</span>
@@ -148,10 +146,8 @@
           </button>
           {% endif %}
         </div>
-        {% endfor %}
+      {% endfor %}
     </div>
-
-  <!-- Área de gerenciamento removida (agora apenas via modal na listagem) -->
 
     <div class="d-flex justify-content-center align-items-center mb-2" style="gap: 8px;">
       <button class="btn btn-outline-secondary btn-sm" id="btn-minus" type="button">−</button>
@@ -163,7 +159,7 @@
         class="form-control text-center"
         aria-label="Quantidade de números"
         style="width:70px;"
-  value="1"
+        value="1"
         autocomplete="off"
         data-preco="{{ rifa.preco|floatformat:2 }}"
         data-rifa-id="{{ rifa.id }}"
@@ -183,14 +179,12 @@
     </button>
     {% endif %}
 
-    <!-- Botão "Ver meus números" agora redireciona para a página Meus Números -->
+    <!-- Botão "Ver meus números" -->
     <a class="btn btn-outline-light fw-bold w-100 mb-3 d-flex align-items-center justify-content-center" href="{% url 'meus_numeros' %}">
       <i class="fas fa-shopping-cart me-2"></i> Ver meus números
     </a>
 
-    <!-- Seção "Números disponíveis" removida definitivamente -->
   </div>
-  </div><!-- /glass-login -->
 </section>
 
 <section class="mt-5" id="premios-section">
@@ -246,6 +240,23 @@
 {% include 'rifa/modal_buscar_numeros.html' %}
 
 <script>
+// DECLARAR somarCotas GLOBALMENTE ANTES DA IIFE
+function somarCotas(qtde) {
+  console.log('📊 TEMPLATE: somarCotas chamado:', qtde);
+  const input = document.getElementById('input-cotas');
+  if (!input) return;
+  
+  const add = parseInt(qtde, 10) || 0;
+  let qtd = parseInt(input.value, 10) || 0;
+  input.value = (qtd + add).toString();
+  
+  // Chamar a função de atualização
+  if (window.atualizarCotas) {
+    window.atualizarCotas();
+  }
+}
+
+// IIFE para gerenciar lógica das cotas
 (function() {
   const MIN_QTD = 1;
 
@@ -257,28 +268,38 @@
   const btnAdq     = document.getElementById('btnAdquirir');
   const alertMin   = document.getElementById('alertMinCotas');
 
-  if (!input) return;
+  if (!input) {
+    console.error('❌ TEMPLATE: input-cotas não encontrado');
+    return;
+  }
 
+  // Obter preço unitário do data attribute
   const precoUnit = (function() {
     const raw = (input.dataset.preco || '0').replace(/\./g,'').replace(',', '.');
     const n = parseFloat(raw);
     return isNaN(n) ? 0 : n;
   })();
 
-  // Obter ID da rifa do data attribute
+  // Obter ID da rifa
   const rifaId = input.dataset.rifaId || document.querySelector('.sorteios-section')?.dataset?.rifaId;
+
+  console.log('📊 TEMPLATE: Dados iniciais:', {
+    precoUnit,
+    rifaId,
+    typeOfRifaId: typeof rifaId
+  });
 
   function formatBRL(v) {
     return (Number(v)||0).toLocaleString('pt-BR',{ style:'currency', currency:'BRL' });
   }
 
   function atualizar() {
-    // mantém somente dígitos
+    // Manter somente dígitos
     let v = input.value.replace(/\D/g,'');
     input.value = v;
     let qtd = parseInt(v,10) || 0;
 
-    // nunca permitir 0: força mínimo
+    // Nunca permitir 0: força mínimo
     if (qtd < MIN_QTD) {
       qtd = MIN_QTD;
       input.value = String(MIN_QTD);
@@ -293,12 +314,22 @@
       else minus.removeAttribute('disabled');
     }
 
-    // se usuário aumentar depois de erro, limpar aviso
+    // Se usuário aumentar depois de erro, limpar aviso
     if (alertMin && qtd >= MIN_QTD) {
       alertMin.classList.add('d-none');
       alertMin.textContent = '';
     }
+
+    console.log('📊 TEMPLATE: Valores atualizados:', {
+      qtd,
+      precoUnit,
+      total,
+      totalFormatado: formatBRL(total)
+    });
   }
+
+  // Expor função de atualização globalmente
+  window.atualizarCotas = atualizar;
 
   // Eventos de digitação/colagem
   ['input','change','paste','blur'].forEach(ev => {
@@ -324,19 +355,12 @@
     });
   }
 
-  // Botões rápidos (+10, +20, etc.)
-  window.somarCotas = function(qtde) {
-    const add = parseInt(qtde,10) || 0;
-    let qtd = parseInt(input.value,10) || 0;
-    input.value = (qtd + add).toString();
-    atualizar();
-  };
-
-  // Validação ao adquirir
+  // EVENTO DO BOTÃO ADQUIRIR - CORRIGIDO
   btnAdq?.addEventListener('click', (e) => {
+    e.preventDefault();
+    
     const qtd = parseInt(input.value,10) || 0;
     if (qtd < MIN_QTD) {
-      e.preventDefault();
       if (alertMin) {
         const unidade = MIN_QTD === 1 ? 'bilhete' : 'bilhetes';
         alertMin.textContent = `A compra mínima para este sorteio é de ${MIN_QTD} ${unidade}.`;
@@ -349,27 +373,35 @@
     const total = precoUnit * qtd;
     const valorFormatado = formatBRL(total);
     
-    console.log('Abrindo modal de pagamento:', {
-      valor: valorFormatado,
+    console.log('🚀 TEMPLATE: Dados do pedido ao abrir modal:', {
       quantidade: qtd,
+      precoUnitario: precoUnit,
+      valorTotal: total,
+      valorFormatado: valorFormatado,
       rifaId: rifaId,
-      rifaIdType: typeof rifaId,
-      precoUnit: precoUnit
+      rifaIdType: typeof rifaId
     });
     
     // Garantir que rifaId seja uma string válida
     const rifaIdString = rifaId ? String(rifaId) : null;
     
-    // Chamar função do modal com todos os parâmetros necessários
+    if (!rifaIdString) {
+      console.error('❌ TEMPLATE: rifaId não definido');
+      alert('Erro: ID da rifa não encontrado. Recarregue a página.');
+      return;
+    }
+    
+    // Verificar se função do modal existe
     if (typeof openPaymentModal === 'function') {
+      console.log('✅ TEMPLATE: Chamando openPaymentModal com dados corretos');
       openPaymentModal(valorFormatado, qtd, rifaIdString);
     } else {
-      console.error('Função openPaymentModal não encontrada');
-      alert('Erro: Modal de pagamento não disponível');
+      console.error('❌ TEMPLATE: Função openPaymentModal não encontrada');
+      alert('Erro: Modal de pagamento não disponível. Recarregue a página.');
     }
   });
 
-  // Inicial
+  // Inicialização
   atualizar();
 })();
 </script>
@@ -377,7 +409,7 @@
 <script>
 // Atualização dinâmica dos Bilhetes Premiados
 (function(){
-  const rifaId = {{ rifa.id }};
+  const rifaId = {{ rifa.id|safe }};
   const grid = document.getElementById('grid-premios');
   const empty = document.getElementById('premiosEmpty');
   const loading = document.getElementById('premiosLoading');
@@ -387,21 +419,24 @@
   }
 
   function renderPremios(lista){
-    console.log('Renderizando premios', lista);
+    if (!grid) return;
+    
     grid.innerHTML='';
     if(!lista.length){
-      empty.classList.remove('d-none');
+      if (empty) empty.classList.remove('d-none');
       return;
     }
-    empty.classList.add('d-none');
+    if (empty) empty.classList.add('d-none');
     const frag=document.createDocumentFragment();
     lista.forEach(p=>{
       const col=document.createElement('div');
-      col.className='col-12 col-sm-6 col-lg-4';
-      col.innerHTML=`<div class="premio-card h-100 p-3">
-          <div class="premio-valor">${formatValor(p.valor)}</div>
-          <div class="premio-numero badge">${String(p.numero).padStart(6,'0')}</div>
-          <div class="premio-status ${p.ganho?'ganho':'disponivel'}">${p.ganho?'Ganho':'● Disponível'}</div>
+      col.className='col-12 col-md-6 col-lg-4 col-xl-3 d-flex';
+      col.innerHTML=`<div class="premio-card flex-fill">
+          <div class="premio-head d-flex justify-content-between align-items-start">
+            <div class="premio-valor">${formatValor(p.valor)}</div>
+            <span class="premio-status ${p.ganho?'ganho':'disponivel'}">${p.ganho?'Ganho':'● Disponível'}</span>
+          </div>
+          <div class="premio-numero">${String(p.numero).padStart(6,'0')}</div>
         </div>`;
       frag.appendChild(col);
     });
@@ -410,36 +445,31 @@
 
   async function carregarPremiosPublico(){
     try{
-      loading.classList.remove('d-none');
+      if (loading) loading.classList.remove('d-none');
       const resp = await fetch(`/api/rifa/${rifaId}/premios/`);
-      console.log('Resposta fetch status', resp.status);
       const data = await resp.json();
-      console.log('Dados recebidos premios', data);
       if(data.premios){
         renderPremios(data.premios);
         if(!data.premios.length){
-          empty.classList.remove('d-none');
+          if (empty) empty.classList.remove('d-none');
         }
       }
     }catch(e){
       console.error('Falha ao carregar prêmios', e);
-      // Se falhar e já havia conteúdo inicial, mantém; senão mostra vazio
-      if(grid.children.length===0){
-        empty.classList.remove('d-none');
+      if(grid && grid.children.length===0){
+        if (empty) empty.classList.remove('d-none');
       }
     }finally{
-      loading.classList.add('d-none');
+      if (loading) loading.classList.add('d-none');
     }
   }
 
-  // Expor para refresh manual após adicionar no modal em outra página/aba
   window.atualizarPremiosRifa = carregarPremiosPublico;
   carregarPremiosPublico();
-  // Polling leve a cada 25s para captar novos prêmios (pode ajustar ou remover)
-  // Polling mais longo em mobile para economizar bateria
+  
   const intervalo = window.matchMedia('(max-width: 576px)').matches ? 40000 : 25000;
   setInterval(carregarPremiosPublico, intervalo);
-  // Listener de storage (caso outro tab atualize prêmios)
+  
   window.addEventListener('storage', (e)=>{
     if(e.key === 'premios_updated_rifa_'+rifaId){
       carregarPremiosPublico();
