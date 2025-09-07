@@ -14,6 +14,8 @@ from django.core.exceptions import ObjectDoesNotExist
 import mercadopago
 import json
 import logging
+import hmac
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -744,201 +746,316 @@ def pedido_pix(request, pedido_id):
 
 @csrf_exempt
 def gerar_qr_code(request):
+    """
+    API para gerar QR Code PIX usando Mercado Pago
+    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método não permitido. Use POST.'}, status=405)
 
     try:
+        # Parse do body da requisição
         try:
             data = json.loads(request.body.decode('utf-8') or '{}')
         except Exception:
             data = request.POST.dict()
 
         pedido_id = data.get('pedido_id') or data.get('order_id')
-
-        # se pedido_id fornecido, usar valor do pedido
-        amount = float(data.get('amount', 0) or 0)
-        description = data.get('description', 'Pagamento de Rifa')
-        if pedido_id:
-            pedido = get_object_or_404(Pedido, id=pedido_id)
-            amount = float(pedido.valor_total)
-            description = f'Rifa #{pedido.rifa.id} - Pedido {pedido.id}'
-
-            # Se já existe QR salvo no pedido, retorna imediatamente
-            existing_qr = getattr(pedido, 'pix_qr_base64', None)
-            if existing_qr:
-                return JsonResponse({
-                    "success": True,
-                    "payment_id": getattr(pedido, 'mercado_pago_payment_id', None),
-                    "qr_code_base64": existing_qr,
-                    "status": pedido.status,
-                    "pix_codigo": getattr(pedido, 'pix_codigo', None),
-                })
+        
+        if not pedido_id:
+            return JsonResponse({'error': 'pedido_id é obrigatório'}, status=400)
 
         try:
-            sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+            pedido = get_object_or_404(Pedido, id=pedido_id)
         except Exception as e:
-            # SDK não disponível ou token inválido; retorna erro amigável
-            logger.exception('SDK MercadoPago indisponível: %s', e)
-            # Se temos pedido, devolve o pix_codigo para que a UI exiba algo útil
-            if pedido_id:
-                try:
-                    pedido = Pedido.objects.filter(id=int(pedido_id)).first()
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'SDK MercadoPago indisponível',
-                        'pix_codigo': getattr(pedido, 'pix_codigo', None)
-                    }, status=502)
-                except Exception:
-                    pass
-            return JsonResponse({'success': False, 'error': 'SDK MercadoPago indisponível'}, status=502)
+            logger.error(f"Erro ao buscar pedido {pedido_id}: {e}")
+            return JsonResponse({'error': f'Pedido {pedido_id} não encontrado'}, status=404)
+        
+        # Se já existe QR salvo no pedido, retorna imediatamente
+        if pedido.pix_qr_base64:
+            return JsonResponse({
+                "success": True,
+                "payment_id": pedido.mercado_pago_payment_id,
+                "qr_code": pedido.pix_codigo,
+                "qr_code_base64": pedido.pix_qr_base64,
+                "status": pedido.status,
+                "cached": True,
+                "pedido_id": pedido_id
+            })
 
-        payment_data = {
-            "transaction_amount": amount or 0.0,
-            "description": description,
-            "payment_method_id": "pix",
-            "payer": {
-                "email": (getattr(request.user, 'email', None) if request.user and request.user.is_authenticated else None) or data.get('email') or 'test_user_123456@testuser.com'
-            }
-        }
+        # Usar o novo serviço do Mercado Pago
+        try:
+            from .mercadopago_service import MercadoPagoService
+            mp_service = MercadoPagoService()
+            
+            # Dados do pagador
+            payer_email = None
+            payer_cpf = None
+            
+            if pedido.user and pedido.user.email:
+                payer_email = pedido.user.email
+            
+            # CPF do pedido ou do perfil do usuário
+            if pedido.cpf:
+                payer_cpf = pedido.cpf
+            elif pedido.user and hasattr(pedido.user, 'profile') and pedido.user.profile.cpf:
+                payer_cpf = pedido.user.profile.cpf
+            
+            # Descrição do pagamento
+            description = f'Rifa {pedido.rifa.titulo} - Pedido #{pedido.id}'
+            
+            logger.info(f"Criando pagamento PIX para pedido {pedido_id}: "
+                       f"valor={pedido.valor_total}, email={payer_email}, cpf={payer_cpf}")
+            
+            # Criar pagamento PIX
+            payment_result = mp_service.criar_pagamento_pix(
+                amount=float(pedido.valor_total),
+                description=description,
+                payer_email=payer_email,
+                external_reference=str(pedido_id),
+                payer_cpf=payer_cpf
+            )
+            
+            logger.info(f"Resultado do pagamento MP: {payment_result}")
+            
+            if not payment_result.get("success"):
+                logger.error(f"Falha no Mercado Pago: {payment_result}")
+                # Fallback: retornar código PIX simples
+                import uuid
+                fallback_code = f"PEDIDO:{pedido.id}|VALOR:{pedido.valor_total:.2f}|RIFA:{pedido.rifa.id}|TX:{uuid.uuid4().hex[:8]}"
+                
+                # Salvar código fallback
+                pedido.pix_codigo = fallback_code
+                pedido.save(update_fields=['pix_codigo'])
+                
+                return JsonResponse({
+                    'success': True,
+                    'payment_id': None,
+                    'qr_code': fallback_code,
+                    'qr_code_base64': None,
+                    'status': 'pending',
+                    'fallback': True,
+                    'message': 'QR Code gerado localmente (Mercado Pago indisponível)',
+                    'error_details': payment_result.get('details'),
+                    'pedido_id': pedido_id
+                })
 
-        if pedido_id:
-            payment_data['external_reference'] = str(pedido.id)
-
-        payment_response = sdk.payment().create(payment_data)
-        # o SDK retorna dict com chave 'response'
-        payment = None
-        if isinstance(payment_response, dict):
-            payment = payment_response.get('response') or payment_response.get('result') or payment_response
-        else:
-            payment = payment_response
-
-        if not payment or not isinstance(payment, dict) or 'id' not in payment:
-            return JsonResponse({'error': 'Resposta inválida do provedor de pagamento', 'detail': payment_response}, status=502)
-
-        # extrai dados do point_of_interaction
-        poi = payment.get('point_of_interaction') or {}
-        tx = poi.get('transaction_data') or {}
-        qr_code = tx.get('qr_code')
-        qr_code_base64 = tx.get('qr_code_base64')
-        payment_id = payment.get('id')
-
-        # persiste no pedido se houver
-        if pedido_id:
+            # Salvar dados no pedido
             try:
-                pedido_obj = Pedido.objects.filter(id=int(pedido_id)).first()
-                if pedido_obj:
-                    pedido_obj.mercado_pago_payment_id = str(payment_id)
-                    if qr_code_base64:
-                        pedido_obj.pix_qr_base64 = qr_code_base64
-                    # tenta salvar id como txid também para compatibilidade
-                    pedido_obj.pix_txid = str(payment_id)
-                    pedido_obj.save()
-            except Exception:
-                logger.exception('Erro ao salvar pagamento no Pedido %s', pedido_id)
+                if payment_result.get("payment_id"):
+                    pedido.mercado_pago_payment_id = str(payment_result["payment_id"])
+                    pedido.pix_txid = str(payment_result["payment_id"])
+                
+                if payment_result.get("qr_code_base64"):
+                    pedido.pix_qr_base64 = payment_result["qr_code_base64"]
+                
+                if payment_result.get("qr_code"):
+                    pedido.pix_codigo = payment_result["qr_code"]
+                
+                pedido.save(update_fields=[
+                    'mercado_pago_payment_id', 
+                    'pix_qr_base64', 
+                    'pix_codigo', 
+                    'pix_txid'
+                ])
+                
+                logger.info(f"Dados de pagamento salvos no pedido {pedido_id}")
+                
+            except Exception as e:
+                logger.error(f"Erro ao salvar dados no pedido {pedido_id}: {e}")
 
-        return JsonResponse({
-            "success": True,
-            "payment_id": payment_id,
-            "qr_code": qr_code,
-            "qr_code_base64": qr_code_base64,
-            "status": payment.get('status'),
-            "payment": payment,
-        })
+            return JsonResponse({
+                "success": True,
+                "payment_id": payment_result.get("payment_id"),
+                "qr_code": payment_result.get("qr_code"),
+                "qr_code_base64": payment_result.get("qr_code_base64"),
+                "status": payment_result.get("status", "pending"),
+                "pedido_id": pedido_id,
+                "message": "QR Code gerado com sucesso"
+            })
+
+        except Exception as e:
+            logger.exception(f'Erro ao criar pagamento PIX via MP: {e}')
+            
+            # Fallback: retornar código PIX simples se Mercado Pago falhar
+            try:
+                import uuid
+                fallback_code = f"PEDIDO:{pedido.id}|VALOR:{pedido.valor_total:.2f}|RIFA:{pedido.rifa.id}|TX:{uuid.uuid4().hex[:8]}"
+                
+                # Salvar código fallback
+                pedido.pix_codigo = fallback_code
+                pedido.save(update_fields=['pix_codigo'])
+                
+                return JsonResponse({
+                    'success': True,
+                    'payment_id': None,
+                    'qr_code': fallback_code,
+                    'qr_code_base64': None,
+                    'status': 'pending',
+                    'fallback': True,
+                    'message': 'QR Code gerado localmente (Mercado Pago indisponível)',
+                    'pedido_id': pedido_id
+                })
+            except Exception as fallback_error:
+                logger.error(f"Erro no fallback: {fallback_error}")
+                return JsonResponse({
+                    'error': 'Erro ao gerar pagamento PIX',
+                    'details': str(e)
+                }, status=500)
+
     except Exception as e:
-        logger.exception('Erro ao gerar QR via MercadoPago: %s', e)
-        return JsonResponse({'error': 'Erro interno', 'details': str(e)}, status=500)
-
+        logger.exception(f'Erro inesperado ao gerar QR: {e}')
+        return JsonResponse({
+            'error': 'Erro interno do servidor',
+            'details': str(e)
+        }, status=500)
 
 @csrf_exempt
 def pagamento_webhook(request):
-    """Endpoint para receber notificações do MercadoPago (webhook).
-
-    O MercadoPago envia um JSON com referência ao recurso alterado.
-    Este handler tenta extrair o payment_id do payload, recuperar os dados
-    do pagamento via SDK e atualizar o Pedido correspondente (usando
-    external_reference quando disponível).
-    """
+    """Webhook que transfere automaticamente para o Lenon quando pagamento é aprovado."""
     try:
         raw = request.body.decode('utf-8') or ''
+        
+        # Validar assinatura do webhook para segurança
+        signature = request.headers.get('x-signature', '')
+        webhook_secret = getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '')
+        
+        if webhook_secret and signature:
+            expected_signature = hmac.new(
+                webhook_secret.encode(),
+                raw.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(signature, expected_signature):
+                logger.warning('Assinatura do webhook inválida')
+                return JsonResponse({'status': 'invalid_signature'}, status=400)
+        
         logger.info('Webhook recebido: %s', raw)
-        # Tenta parsear JSON
+        
+        # Parse do payload
         payload = {}
         try:
             payload = json.loads(raw) if raw else {}
         except Exception:
             payload = {}
 
-        # Extração comum: {"type":"payment","data":{"id": 123456789}}
+        # Extrair payment_id
         payment_id = None
         if isinstance(payload, dict):
-            # v1/v2 compatibility
             data = payload.get('data') or payload.get('resource') or {}
             if isinstance(data, dict):
                 payment_id = data.get('id') or data.get('payment', {}).get('id')
-            # sometimes payload itself has an 'id'
             if not payment_id:
                 payment_id = payload.get('id')
 
         if not payment_id:
-            # Não conseguimos extrair payment id; apenas acknowledge
+            logger.info('Webhook sem payment_id')
             return JsonResponse({'status': 'ok', 'message': 'no_payment_id'})
 
-        # Se não há credencial configurada, não tentamos buscar
         if not getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', None):
-            logger.error('MERCADOPAGO_ACCESS_TOKEN ausente ao processar webhook')
-            return JsonResponse({'status': 'error', 'message': 'gateway_not_configured'}, status=500)
+            logger.error('MERCADOPAGO_ACCESS_TOKEN ausente')
+            return JsonResponse({'status': 'error'}, status=500)
 
+        # Buscar dados do pagamento no Mercado Pago
         sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
         mp_resp = sdk.payment().get(payment_id)
         result = mp_resp.get('response') if isinstance(mp_resp, dict) else mp_resp
 
-        # Extrai possível external_reference para localizar Pedido
         external_ref = None
+        status = None
+        transaction_amount = 0
+        
         if isinstance(result, dict):
-            external_ref = result.get('external_reference') or (result.get('metadata') or {}).get('order_id')
+            external_ref = result.get('external_reference')
             status = result.get('status')
-            # tenta também pegar qr_code_base64
-            poi = result.get('point_of_interaction') or {}
-            tx_data = poi.get('transaction_data') if isinstance(poi, dict) else None
-            qr_code_base64 = tx_data.get('qr_code_base64') if tx_data else None
-        else:
-            status = None
-            qr_code_base64 = None
+            transaction_amount = result.get('transaction_amount', 0)
+            
+            logger.info(f'Payment {payment_id}: status={status}, amount={transaction_amount}, ref={external_ref}')
 
-        # Se encontramos external_reference, atualiza Pedido
+        # Processar pedido se encontrado
         if external_ref:
             try:
                 pedido = Pedido.objects.filter(id=int(external_ref)).first()
-            except Exception:
-                pedido = None
-
-            if pedido:
-                # Marca como pago se status indica aprovação
-                if status and status.lower() in ['approved','paid']:
+                
+                if pedido and status and status.lower() in ['approved', 'paid']:
+                    logger.info(f'Processando pagamento aprovado - Pedido: {pedido.id}')
+                    
+                    # Marcar pedido como pago
                     pedido.status = 'pago'
-                # Salva qr_code_base64 em campo
-                if qr_code_base64:
-                    pedido.pix_qr_base64 = qr_code_base64
-                # Armazena payment id no pedido para rastrear (campo mercado_pago_payment_id)
-                try:
-                    mp_id = result.get('id')
-                    if mp_id:
-                        pedido.mercado_pago_payment_id = str(mp_id)
-                except Exception:
-                    pass
-                # Tenta salvar txid também
-                try:
-                    pedido.pix_txid = result.get('id') or pedido.pix_txid
-                except Exception:
-                    pass
-                pedido.save()
+                    
+                    # Atualizar números para "pago"
+                    numeros_ids = [int(x) for x in pedido.numeros_reservados.split(',') if x.strip().isdigit()]
+                    Numero.objects.filter(
+                        rifa=pedido.rifa,
+                        numero__in=numeros_ids,
+                        status='reservado'
+                    ).update(status='pago')
+                    
+                    # Salvar pedido
+                    pedido.save()
+                    
+                    # TRANSFERIR PARA O LENON AUTOMATICAMENTE
+                    try:
+                        taxa_plataforma = getattr(settings, 'TAXA_PLATAFORMA', 0)
+                        valor_para_lenon = float(transaction_amount) * (1 - taxa_plataforma)
+                        
+                        if valor_para_lenon > 0:
+                            logger.info(f'Iniciando transferência para Lenon: R$ {valor_para_lenon:.2f}')
+                            
+                            sucesso = transferir_para_lenon(payment_id, valor_para_lenon, pedido.id)
+                            
+                            if sucesso:
+                                logger.info(f'Transferência realizada com sucesso para pedido {pedido.id}')
+                            else:
+                                logger.error(f'Falha na transferência para pedido {pedido.id}')
+                        else:
+                            logger.warning(f'Valor para transferência é zero ou negativo: {valor_para_lenon}')
+                            
+                    except Exception as e:
+                        logger.exception(f'Erro na transferência automática para pedido {pedido.id}: {e}')
+                        
+                elif pedido:
+                    logger.info(f'Pedido {pedido.id} encontrado mas status não é aprovado: {status}')
+                else:
+                    logger.warning(f'Pedido não encontrado para external_reference: {external_ref}')
+                    
+            except Exception as e:
+                logger.exception(f'Erro ao processar pedido {external_ref}: {e}')
+        else:
+            logger.info('Webhook sem external_reference')
 
         return JsonResponse({'status': 'ok'})
 
     except Exception as e:
-        logger.exception('Erro no processamento do webhook: %s', e)
-        return JsonResponse({'status': 'error', 'details': str(e)}, status=500)
+        logger.exception(f'Erro crítico no webhook: {e}')
+        return JsonResponse({'status': 'error'}, status=500)
 
+def transferir_para_lenon(payment_id, valor, pedido_id):
+    """Transfere automaticamente para a conta do Lenon"""
+    try:
+        logger.info(f'INICIANDO transferência - Payment: {payment_id}, Valor: R$ {valor:.2f}, Pedido: {pedido_id}')
+        
+        from .mercadopago_service import MercadoPagoService
+        mp_service = MercadoPagoService()
+        
+        result = mp_service.criar_transferencia(
+            amount=valor,
+            receiver_id=settings.LENON_USER_ID,
+            description=f"Rifa - Pedido #{pedido_id}"
+        )
+        
+        logger.info(f'RESULTADO transferência: {result}')
+        
+        if result.get("success"):
+            logger.info(f'Transferência criada com sucesso: {result.get("transfer_id")}')
+            return True
+        else:
+            logger.error(f'Erro na transferência: {result.get("error")} - {result.get("details")}')
+            return False
+            
+    except Exception as e:
+        logger.exception(f'ERRO CRÍTICO ao transferir para Lenon: {e}')
+        return False
 
 def mostrar_qr(request, pedido_id):
     """Renderiza um template simples mostrando o QR Code em base64.
@@ -1157,3 +1274,101 @@ def pagamento_falha(request):
 
 def pagamento_pendente(request):
     return HttpResponse("⏳ O pagamento está pendente.")
+
+@csrf_exempt 
+def verificar_status_pagamento(request, pedido_id):
+    """
+    API para verificar status de pagamento
+    """
+    try:
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        
+        # Se tem payment_id do Mercado Pago, consulta a API
+        if pedido.mercado_pago_payment_id:
+            try:
+                from .mercadopago_service import MercadoPagoService
+                mp_service = MercadoPagoService()
+                
+                status_result = mp_service.verificar_pagamento(pedido.mercado_pago_payment_id)
+                
+                if status_result.get("success"):
+                    mp_status = status_result.get("status")
+                    
+                    # Atualizar status do pedido se necessário
+                    if mp_status == "approved" and pedido.status != "pago":
+                        pedido.status = "pago"
+                        
+                        # Atualizar números para "pago"
+                        numeros_ids = [int(x) for x in pedido.numeros_reservados.split(',') if x.strip().isdigit()]
+                        Numero.objects.filter(
+                            rifa=pedido.rifa,
+                            numero__in=numeros_ids,
+                            status='reservado'
+                        ).update(status='pago')
+                        
+                        pedido.save()
+                        logger.info(f"Pedido {pedido_id} marcado como pago")
+                    
+                    return JsonResponse({
+                        "success": True,
+                        "status": pedido.status,
+                        "mercado_pago_status": mp_status,
+                        "payment_id": pedido.mercado_pago_payment_id,
+                        "updated": True
+                    })
+                else:
+                    return JsonResponse({
+                        "success": True,
+                        "status": pedido.status,
+                        "error": "Erro ao consultar Mercado Pago",
+                        "updated": False
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Erro ao verificar pagamento no MP: {e}")
+                return JsonResponse({
+                    "success": True,
+                    "status": pedido.status,
+                    "error": "Erro na consulta externa",
+                    "updated": False
+                })
+        else:
+            # Sem payment_id, apenas retorna status atual
+            return JsonResponse({
+                "success": True,
+                "status": pedido.status,
+                "message": "Sem integração ativa",
+                "updated": False
+            })
+            
+    except Exception as e:
+        logger.error(f"Erro ao verificar status do pedido {pedido_id}: {e}")
+        return JsonResponse({
+            "error": "Erro ao verificar status",
+            "details": str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def testar_mercadopago(request):
+    """
+    Endpoint para testar a conexão com Mercado Pago
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Acesso negado'}, status=403)
+    
+    try:
+        from .mercadopago_service import MercadoPagoService
+        mp_service = MercadoPagoService()
+        
+        result = mp_service.testar_conexao()
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        logger.exception(f'Erro ao testar Mercado Pago: {e}')
+        return JsonResponse({
+            'success': False,
+            'error': 'Erro no teste',
+            'details': str(e)
+        }, status=500)

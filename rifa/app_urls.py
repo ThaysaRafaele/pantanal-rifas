@@ -36,4 +36,10 @@ urlpatterns = [
     path('pagamento/sucesso/', views.pagamento_sucesso, name='pagamento_sucesso'),
     path('pagamento/falha/', views.pagamento_falha, name='pagamento_falha'),
     path('pagamento/pendente/', views.pagamento_pendente, name='pagamento_pendente'),
+
+    # URL para verificar status do pagamento
+    path('api/pedido/<int:pedido_id>/status/', views.verificar_status_pagamento, name='verificar_status_pagamento'),
+    
+    # URL para testar Mercado Pago (apenas para admins)
+    path('api/test-mercadopago/', views.testar_mercadopago, name='testar_mercadopago'),
 ]

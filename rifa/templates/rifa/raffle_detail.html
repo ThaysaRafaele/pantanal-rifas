@@ -166,6 +166,7 @@
   value="1"
         autocomplete="off"
         data-preco="{{ rifa.preco|floatformat:2 }}"
+        data-rifa-id="{{ rifa.id }}"
       >
       <button class="btn btn-outline-secondary btn-sm" id="btn-plus" type="button">+</button>
     </div>
@@ -264,6 +265,9 @@
     return isNaN(n) ? 0 : n;
   })();
 
+  // Obter ID da rifa do data attribute
+  const rifaId = input.dataset.rifaId || document.querySelector('.sorteios-section')?.dataset?.rifaId;
+
   function formatBRL(v) {
     return (Number(v)||0).toLocaleString('pt-BR',{ style:'currency', currency:'BRL' });
   }
@@ -301,8 +305,24 @@
     input.addEventListener(ev, atualizar);
   });
 
-  // Observação: os botões plus/minus são tratados por delegação em `static/js/main.js`.
-  // Removemos os handlers inline para evitar incremento duplo.
+  // Botões plus/minus
+  if (plus) {
+    plus.addEventListener('click', function() {
+      let qtd = parseInt(input.value,10) || 0;
+      input.value = (qtd + 1).toString();
+      atualizar();
+    });
+  }
+
+  if (minus) {
+    minus.addEventListener('click', function() {
+      let qtd = parseInt(input.value,10) || 0;
+      if (qtd > MIN_QTD) {
+        input.value = (qtd - 1).toString();
+        atualizar();
+      }
+    });
+  }
 
   // Botões rápidos (+10, +20, etc.)
   window.somarCotas = function(qtde) {
@@ -324,17 +344,36 @@
       }
       return;
     }
-    // valor total formatado para modal
+    
+    // Calcular valor total
     const total = precoUnit * qtd;
-    openPaymentModal(total.toLocaleString('pt-BR',{style:'currency', currency:'BRL'}));
+    const valorFormatado = formatBRL(total);
+    
+    console.log('Abrindo modal de pagamento:', {
+      valor: valorFormatado,
+      quantidade: qtd,
+      rifaId: rifaId,
+      rifaIdType: typeof rifaId,
+      precoUnit: precoUnit
+    });
+    
+    // Garantir que rifaId seja uma string válida
+    const rifaIdString = rifaId ? String(rifaId) : null;
+    
+    // Chamar função do modal com todos os parâmetros necessários
+    if (typeof openPaymentModal === 'function') {
+      openPaymentModal(valorFormatado, qtd, rifaIdString);
+    } else {
+      console.error('Função openPaymentModal não encontrada');
+      alert('Erro: Modal de pagamento não disponível');
+    }
   });
 
   // Inicial
   atualizar();
 })();
-
-// (Lógica de abas removida)
 </script>
+
 <script>
 // Atualização dinâmica dos Bilhetes Premiados
 (function(){
