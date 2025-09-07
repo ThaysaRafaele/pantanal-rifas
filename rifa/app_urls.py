@@ -31,6 +31,9 @@ urlpatterns = [
     path('api/rifa/<int:rifa_id>/premios/', views.api_premios_rifa, name='api_premios_rifa'),
     path('api/rifa/<int:rifa_id>/premio/<int:premio_id>/excluir/', views.excluir_premio, name='excluir_premio'),
 
+    # Rota para buscar números de bilhetes comprados - por CPF
+    path('buscar-pedidos-cpf/', views.buscar_pedidos_cpf, name='buscar_pedidos_cpf'),
+
     # Rotas de teste/integração com Mercado Pago
     path('pagamento/teste/', views.teste_pagamento, name='teste_pagamento'),
     path('pagamento/sucesso/', views.pagamento_sucesso, name='pagamento_sucesso'),

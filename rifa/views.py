@@ -1408,3 +1408,65 @@ def testar_mercadopago(request):
             'error': 'Erro no teste',
             'details': str(e)
         }, status=500)
+
+@csrf_exempt
+def buscar_pedidos_cpf(request):
+    """View para buscar pedidos pelo CPF do comprador"""
+    if request.method == 'POST':
+        cpf = request.POST.get('cpf', '').strip()
+        
+        if not cpf:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'CPF é obrigatório.'
+            })
+        
+        # Remove formatação do CPF
+        import re
+        cpf_limpo = re.sub(r'\D', '', cpf)
+        
+        if len(cpf_limpo) != 11:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'CPF deve ter 11 dígitos.'
+            })
+        
+        try:
+            # Buscar números pelo CPF (tanto formatado quanto apenas dígitos)
+            cpf_formatado = f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
+            
+            numeros = Numero.objects.filter(
+                comprador_cpf__in=[cpf_limpo, cpf_formatado],
+                status__in=['reservado', 'pago']
+            ).select_related('rifa')
+            
+            if numeros.exists():
+                numeros_data = []
+                for numero in numeros:
+                    numeros_data.append({
+                        'numero': numero.numero,
+                        'rifa_titulo': numero.rifa.titulo if numero.rifa else 'Sem título',
+                        'status': numero.status.title(),
+                        'comprador_nome': numero.comprador_nome or 'Não informado'
+                    })
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'numeros': numeros_data
+                })
+            else:
+                return JsonResponse({
+                    'status': 'not_found',
+                    'message': f'Nenhum número encontrado para o CPF {cpf}.'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Erro interno do servidor.'
+            })
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método inválido.'
+    })
