@@ -157,15 +157,34 @@ def login_view(request):
 def cadastro(request):
     if request.method == 'POST':
         nome = request.POST['nomeCompleto']
+        username = request.POST.get('username', '')
         social = request.POST.get('nomeSocial', '')
         cpf = request.POST['cpf']
         data = request.POST['dataNascimento']
         email = request.POST['email']
-        senha = request.POST['senha']
-        senha2 = request.POST['senha2']
+        telefone = request.POST['telefone']
+        confirma_telefone = request.POST['confirmaTelefone']
+        # CORRIGIDO: usar password1 e password2 em vez de senha e senha2
+        senha = request.POST['password1']
+        senha2 = request.POST['password2']
+        
+        # Campos de endereço
+        cep = request.POST['cep']
+        logradouro = request.POST['logradouro']
+        numero = request.POST['numero']
+        bairro = request.POST['bairro']
+        complemento = request.POST.get('complemento', '')
+        uf = request.POST['uf']
+        cidade = request.POST['cidade']
+        referencia = request.POST.get('referencia', '')
 
+        # Validações
         if senha != senha2:
             messages.error(request, "As senhas não coincidem.")
+            return redirect('cadastro')
+            
+        if telefone != confirma_telefone:
+            messages.error(request, "Os telefones não coincidem.")
             return redirect('cadastro')
 
         # Normaliza CPF para salvar no perfil
@@ -173,7 +192,7 @@ def cadastro(request):
         cpf_digits = re.sub(r'\D','', cpf)
         cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits)==11 else cpf
 
-        # Verifica se o CPF já existe em UserProfile (tanto formatado quanto somente dígitos)
+        # Verifica se o CPF já existe em UserProfile
         from rifa.models_profile import UserProfile as _UP
         exists_profile = _UP.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).first()
         if not exists_profile:
@@ -186,32 +205,49 @@ def cadastro(request):
             messages.error(request, "CPF já cadastrado.")
             return redirect('cadastro')
 
-        # Usa nomeSocial como username (sanitiza e garante unicidade). Nunca usar CPF como username.
-        raw_username = (social or '').strip()
-        if not raw_username:
-            # fallback: usar primeiro nome ou parte do email
-            if nome:
-                raw_username = nome.split()[0]
-            else:
-                raw_username = (email.split('@',1)[0] if email else 'user')
+        # Verifica se username já existe
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Nome de usuário já existe.")
+            return redirect('cadastro')
+            
+        # Verifica se email já existe
+        if User.objects.filter(email=email).exists():
+            messages.error(request, "Email já cadastrado.")
+            return redirect('cadastro')
 
-        # sanitize: permitir apenas chars suportados por Django username (@ . + - _ e alfanum)
-        username_base = re.sub(r"[^A-Za-z0-9@.\+\-_]", '_', raw_username)[:140]
-        username = username_base.lower()
-        suffix = 0
-        while User.objects.filter(username=username).exists():
-            suffix += 1
-            tail = str(suffix)
-            allowed_len = 150 - len(tail)
-            username = (username_base[:allowed_len] + tail).lower()
+        try:
+            # Cria usuário
+            user = User.objects.create_user(
+                username=username, 
+                email=email, 
+                password=senha, 
+                first_name=nome
+            )
+            
+            # Cria perfil com todos os campos
+            Perfil.objects.create(
+                user=user, 
+                cpf=cpf_formatted, 
+                nome_social=social, 
+                data_nascimento=data,
+                telefone=telefone,
+                cep=cep,
+                logradouro=logradouro,
+                numero=numero,
+                bairro=bairro,
+                complemento=complemento,
+                uf=uf,
+                cidade=cidade,
+                referencia=referencia
+            )
 
-        # cria usuário com username derivado de nomeSocial (NUNCA CPF) e salva perfil com CPF formatado
-        user = User.objects.create_user(username=username, email=email, password=senha, first_name=nome)
-        Perfil.objects.create(user=user, cpf=cpf_formatted, nome_social=social, data_nascimento=data)
-
-        login(request, user)  # loga automaticamente
-        messages.success(request, "Cadastro realizado com sucesso!")
-        return redirect('home')
+            login(request, user)  # loga automaticamente
+            messages.success(request, "Cadastro realizado com sucesso!")
+            return redirect('home')
+            
+        except Exception as e:
+            messages.error(request, f"Erro ao criar cadastro: {str(e)}")
+            return redirect('cadastro')
 
     return render(request, 'rifa/cadastro.html')
 
