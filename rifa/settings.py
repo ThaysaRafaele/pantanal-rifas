@@ -1,11 +1,24 @@
 from pathlib import Path
 import os
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-your-secret-key-here'
-DEBUG = True
-ALLOWED_HOSTS = ['pantanal.onrender.com', 'localhost', '127.0.0.1', 'www.pantanaldasortems.com', 'pantanaldasortems.com']
+# Security
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
+
+# Debug baseado em ambiente
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+
+# Hosts permitidos
+ALLOWED_HOSTS = [
+    'localhost', 
+    '127.0.0.1',
+    '.onrender.com',  # Permite qualquer subdomínio do Render
+    'pantanal.onrender.com',
+    'www.pantanaldasortems.com', 
+    'pantanaldasortems.com'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -19,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Para servir arquivos estáticos
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -47,12 +61,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'rifa.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database configuration
+if 'DATABASE_URL' in os.environ:
+    # Produção: PostgreSQL via Render
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Desenvolvimento: SQLite local
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
@@ -66,23 +92,45 @@ TIME_ZONE = 'America/Cuiaba'
 USE_I18N = True
 USE_TZ = True
 
+# Static files configuration
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
+# Whitenoise configuration for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Authentication
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email backend
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # Configure SMTP para produção se necessário
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Security settings para produção
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_REDIRECT_EXEMPT = []
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # =======================
-# 🔑 Mercado Pago Config - PRODUÇÃO ( Transferindo para conta do Lenon)
+# 🔑 Mercado Pago Config
 # =======================
 MERCADOPAGO_PUBLIC_KEY = os.getenv(
     "MERCADOPAGO_PUBLIC_KEY",
@@ -105,14 +153,47 @@ MERCADOPAGO_CLIENT_SECRET = os.getenv(
 )
 
 # Dados do Lenon para transfers
-LENON_EMAIL = "lenonms543@gmail.com"  # Email da conta MP do Lenon
-LENON_CPF = "01800818106"  # CPF
-LENON_USER_ID = "217387767"  # User ID da conta do Lenon
-TAXA_PLATAFORMA = 0.00 
+LENON_EMAIL = os.getenv("LENON_EMAIL", "lenonms543@gmail.com")
+LENON_CPF = os.getenv("LENON_CPF", "01800818106")
+LENON_USER_ID = os.getenv("LENON_USER_ID", "217387767")
+TAXA_PLATAFORMA = float(os.getenv("TAXA_PLATAFORMA", "0.00"))
 
-# Assinatura do webhook para validação
-MERCADOPAGO_WEBHOOK_SECRET = "edbd5177af11d0917d78100f19e5f819694608d6c12d82355fb05037b6b536b5"
+# Webhook secret
+MERCADOPAGO_WEBHOOK_SECRET = os.getenv(
+    "MERCADOPAGO_WEBHOOK_SECRET",
+    "edbd5177af11d0917d78100f19e5f819694608d6c12d82355fb05037b6b536b5"
+)
 
-# Exemplo de chamada curl (apenas referência / comentário):
-# curl -H 'Authorization: Bearer APP_USR-7966421377263587-090120-14ab8d825b8e13df9dc6ae4511d54e3d-2665708908' \
-#   https://api.mercadolibre.com/users/me
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'rifa': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+    },
+}
