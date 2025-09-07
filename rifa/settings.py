@@ -82,26 +82,26 @@ LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # =======================
-# 🔑 Mercado Pago Config
+# 🔑 Mercado Pago Config - PRODUÇÃO (Conta do Lenon)
 # =======================
 MERCADOPAGO_PUBLIC_KEY = os.getenv(
     "MERCADOPAGO_PUBLIC_KEY",
-    "TEST-15ad8842-fcd9-4f06-8a13-1034ed2aafb3"
+    "APP_USR-047e3cad-def8-4095-90eb-0c7f17c41f66"
 )
 
 MERCADOPAGO_ACCESS_TOKEN = os.getenv(
     "MERCADOPAGO_ACCESS_TOKEN",
-    "TEST-5791646844116557-090620-63c75710018a6455829153b679edc3d8-190769772"
+    "APP_USR-8930969594811512-090621-dae49d97322647d22509cb48b959867c-217387767"
 )
 
 MERCADOPAGO_CLIENT_ID = os.getenv(
     "MERCADOPAGO_CLIENT_ID",
-    "7966421377263587"
+    "8930969594811512"
 )
 
 MERCADOPAGO_CLIENT_SECRET = os.getenv(
     "MERCADOPAGO_CLIENT_SECRET",
-    "UTPFmIq48nR8RTBvwNXqvSsU0RdVNqY0"
+    "vpxjHw2HXIJKKeFtcZSrGY4iMEOUDr8I"
 )
 
 # Exemplo de chamada curl (apenas referência / comentário):
