@@ -82,27 +82,36 @@ LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # =======================
-# 🔑 Mercado Pago Config - PRODUÇÃO (Conta do Lenon)
+# 🔑 Mercado Pago Config - PRODUÇÃO ( Transferindo para conta do Lenon)
 # =======================
 MERCADOPAGO_PUBLIC_KEY = os.getenv(
     "MERCADOPAGO_PUBLIC_KEY",
-    "APP_USR-047e3cad-def8-4095-90eb-0c7f17c41f66"
+    "APP_USR-2b928fc8-0a66-461b-b9b4-daac8737c198"
 )
 
 MERCADOPAGO_ACCESS_TOKEN = os.getenv(
     "MERCADOPAGO_ACCESS_TOKEN",
-    "APP_USR-8930969594811512-090621-dae49d97322647d22509cb48b959867c-217387767"
+    "APP_USR-5791646844116557-090620-60f7b4822bce105687cb6339f9a99e64-190769772"
 )
 
 MERCADOPAGO_CLIENT_ID = os.getenv(
     "MERCADOPAGO_CLIENT_ID",
-    "8930969594811512"
+    "5791646844116557"
 )
 
 MERCADOPAGO_CLIENT_SECRET = os.getenv(
     "MERCADOPAGO_CLIENT_SECRET",
-    "vpxjHw2HXIJKKeFtcZSrGY4iMEOUDr8I"
+    "Kz1LwAcsCZT67FaLhYshFzQuE49CnZPj"
 )
+
+# Dados do Lenon para transfers
+LENON_EMAIL = "lenonms543@gmail.com"  # Email da conta MP do Lenon
+LENON_CPF = "01800818106"  # CPF
+LENON_USER_ID = "217387767"  # User ID da conta do Lenon
+TAXA_PLATAFORMA = 0.00 
+
+# Assinatura do webhook para validação
+MERCADOPAGO_WEBHOOK_SECRET = "edbd5177af11d0917d78100f19e5f819694608d6c12d82355fb05037b6b536b5"
 
 # Exemplo de chamada curl (apenas referência / comentário):
 # curl -H 'Authorization: Bearer APP_USR-7966421377263587-090120-14ab8d825b8e13df9dc6ae4511d54e3d-2665708908' \

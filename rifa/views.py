@@ -14,6 +14,8 @@ from django.core.exceptions import ObjectDoesNotExist
 import mercadopago
 import json
 import logging
+import hmac
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -907,97 +909,153 @@ def gerar_qr_code(request):
             'details': str(e)
         }, status=500)
 
-
 @csrf_exempt
 def pagamento_webhook(request):
-    """Endpoint para receber notificações do MercadoPago (webhook).
-
-    O MercadoPago envia um JSON com referência ao recurso alterado.
-    Este handler tenta extrair o payment_id do payload, recuperar os dados
-    do pagamento via SDK e atualizar o Pedido correspondente (usando
-    external_reference quando disponível).
-    """
+    """Webhook que transfere automaticamente para o Lenon quando pagamento é aprovado."""
     try:
         raw = request.body.decode('utf-8') or ''
+        
+        # Validar assinatura do webhook para segurança
+        signature = request.headers.get('x-signature', '')
+        webhook_secret = getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '')
+        
+        if webhook_secret and signature:
+            expected_signature = hmac.new(
+                webhook_secret.encode(),
+                raw.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(signature, expected_signature):
+                logger.warning('Assinatura do webhook inválida')
+                return JsonResponse({'status': 'invalid_signature'}, status=400)
+        
         logger.info('Webhook recebido: %s', raw)
-        # Tenta parsear JSON
+        
+        # Parse do payload
         payload = {}
         try:
             payload = json.loads(raw) if raw else {}
         except Exception:
             payload = {}
 
-        # Extração comum: {"type":"payment","data":{"id": 123456789}}
+        # Extrair payment_id
         payment_id = None
         if isinstance(payload, dict):
-            # v1/v2 compatibility
             data = payload.get('data') or payload.get('resource') or {}
             if isinstance(data, dict):
                 payment_id = data.get('id') or data.get('payment', {}).get('id')
-            # sometimes payload itself has an 'id'
             if not payment_id:
                 payment_id = payload.get('id')
 
         if not payment_id:
-            # Não conseguimos extrair payment id; apenas acknowledge
+            logger.info('Webhook sem payment_id')
             return JsonResponse({'status': 'ok', 'message': 'no_payment_id'})
 
-        # Se não há credencial configurada, não tentamos buscar
         if not getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', None):
-            logger.error('MERCADOPAGO_ACCESS_TOKEN ausente ao processar webhook')
-            return JsonResponse({'status': 'error', 'message': 'gateway_not_configured'}, status=500)
+            logger.error('MERCADOPAGO_ACCESS_TOKEN ausente')
+            return JsonResponse({'status': 'error'}, status=500)
 
+        # Buscar dados do pagamento no Mercado Pago
         sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
         mp_resp = sdk.payment().get(payment_id)
         result = mp_resp.get('response') if isinstance(mp_resp, dict) else mp_resp
 
-        # Extrai possível external_reference para localizar Pedido
         external_ref = None
+        status = None
+        transaction_amount = 0
+        
         if isinstance(result, dict):
-            external_ref = result.get('external_reference') or (result.get('metadata') or {}).get('order_id')
+            external_ref = result.get('external_reference')
             status = result.get('status')
-            # tenta também pegar qr_code_base64
-            poi = result.get('point_of_interaction') or {}
-            tx_data = poi.get('transaction_data') if isinstance(poi, dict) else None
-            qr_code_base64 = tx_data.get('qr_code_base64') if tx_data else None
-        else:
-            status = None
-            qr_code_base64 = None
+            transaction_amount = result.get('transaction_amount', 0)
+            
+            logger.info(f'Payment {payment_id}: status={status}, amount={transaction_amount}, ref={external_ref}')
 
-        # Se encontramos external_reference, atualiza Pedido
+        # Processar pedido se encontrado
         if external_ref:
             try:
                 pedido = Pedido.objects.filter(id=int(external_ref)).first()
-            except Exception:
-                pedido = None
-
-            if pedido:
-                # Marca como pago se status indica aprovação
-                if status and status.lower() in ['approved','paid']:
+                
+                if pedido and status and status.lower() in ['approved', 'paid']:
+                    logger.info(f'Processando pagamento aprovado - Pedido: {pedido.id}')
+                    
+                    # Marcar pedido como pago
                     pedido.status = 'pago'
-                # Salva qr_code_base64 em campo
-                if qr_code_base64:
-                    pedido.pix_qr_base64 = qr_code_base64
-                # Armazena payment id no pedido para rastrear (campo mercado_pago_payment_id)
-                try:
-                    mp_id = result.get('id')
-                    if mp_id:
-                        pedido.mercado_pago_payment_id = str(mp_id)
-                except Exception:
-                    pass
-                # Tenta salvar txid também
-                try:
-                    pedido.pix_txid = result.get('id') or pedido.pix_txid
-                except Exception:
-                    pass
-                pedido.save()
+                    
+                    # Atualizar números para "pago"
+                    numeros_ids = [int(x) for x in pedido.numeros_reservados.split(',') if x.strip().isdigit()]
+                    Numero.objects.filter(
+                        rifa=pedido.rifa,
+                        numero__in=numeros_ids,
+                        status='reservado'
+                    ).update(status='pago')
+                    
+                    # Salvar pedido
+                    pedido.save()
+                    
+                    # TRANSFERIR PARA O LENON AUTOMATICAMENTE
+                    try:
+                        taxa_plataforma = getattr(settings, 'TAXA_PLATAFORMA', 0)
+                        valor_para_lenon = float(transaction_amount) * (1 - taxa_plataforma)
+                        
+                        if valor_para_lenon > 0:
+                            logger.info(f'Iniciando transferência para Lenon: R$ {valor_para_lenon:.2f}')
+                            
+                            sucesso = transferir_para_lenon(payment_id, valor_para_lenon, pedido.id)
+                            
+                            if sucesso:
+                                logger.info(f'Transferência realizada com sucesso para pedido {pedido.id}')
+                            else:
+                                logger.error(f'Falha na transferência para pedido {pedido.id}')
+                        else:
+                            logger.warning(f'Valor para transferência é zero ou negativo: {valor_para_lenon}')
+                            
+                    except Exception as e:
+                        logger.exception(f'Erro na transferência automática para pedido {pedido.id}: {e}')
+                        
+                elif pedido:
+                    logger.info(f'Pedido {pedido.id} encontrado mas status não é aprovado: {status}')
+                else:
+                    logger.warning(f'Pedido não encontrado para external_reference: {external_ref}')
+                    
+            except Exception as e:
+                logger.exception(f'Erro ao processar pedido {external_ref}: {e}')
+        else:
+            logger.info('Webhook sem external_reference')
 
         return JsonResponse({'status': 'ok'})
 
     except Exception as e:
-        logger.exception('Erro no processamento do webhook: %s', e)
-        return JsonResponse({'status': 'error', 'details': str(e)}, status=500)
+        logger.exception(f'Erro crítico no webhook: {e}')
+        return JsonResponse({'status': 'error'}, status=500)
 
+def transferir_para_lenon(payment_id, valor, pedido_id):
+    """Transfere automaticamente para a conta do Lenon"""
+    try:
+        logger.info(f'INICIANDO transferência - Payment: {payment_id}, Valor: R$ {valor:.2f}, Pedido: {pedido_id}')
+        
+        from .mercadopago_service import MercadoPagoService
+        mp_service = MercadoPagoService()
+        
+        result = mp_service.criar_transferencia(
+            amount=valor,
+            receiver_id=settings.LENON_USER_ID,
+            description=f"Rifa - Pedido #{pedido_id}"
+        )
+        
+        logger.info(f'RESULTADO transferência: {result}')
+        
+        if result.get("success"):
+            logger.info(f'Transferência criada com sucesso: {result.get("transfer_id")}')
+            return True
+        else:
+            logger.error(f'Erro na transferência: {result.get("error")} - {result.get("details")}')
+            return False
+            
+    except Exception as e:
+        logger.exception(f'ERRO CRÍTICO ao transferir para Lenon: {e}')
+        return False
 
 def mostrar_qr(request, pedido_id):
     """Renderiza um template simples mostrando o QR Code em base64.
