@@ -409,13 +409,7 @@ let paymentCheckInterval = null;
 
 // Função principal: openPaymentModal corrigida
 function openPaymentModal(valorTotal, quantidade, rifaId) {
-  console.log('🚀 MODAL: openPaymentModal chamado:', { 
-    valorTotal, 
-    quantidade, 
-    rifaId,
-    typeOfRifaId: typeof rifaId 
-  });
-  
+    
   // Validar parâmetros obrigatórios
   if (!rifaId) {
     console.error('❌ ERRO: rifaId não fornecido');
@@ -440,11 +434,6 @@ function openPaymentModal(valorTotal, quantidade, rifaId) {
   document.getElementById('hiddenQuantidade').value = currentQuantidade;
   document.getElementById('hiddenValorTotal').value = currentValorTotal;
   
-  console.log('✅ MODAL: Dados salvos:', {
-    currentRifaId,
-    currentQuantidade,
-    currentValorTotal
-  });
   
   // Atualizar interface do modal
   document.getElementById('payValorTotal').textContent = valorTotal;
@@ -475,8 +464,6 @@ function closePaymentModal() {
 
 // Reset completo do modal
 function resetModal() {
-  console.log('🔄 MODAL: Resetando modal');
-  
   // Mostrar etapa 1, esconder etapa 2
   document.getElementById('stepCpfVerification').style.display = 'block';
   document.getElementById('stepPaymentProcessing').style.display = 'none';
@@ -498,7 +485,6 @@ function resetModal() {
 // Verificar CPF
 function verificarCpf(event) {
   event.preventDefault();
-  console.log('🔍 MODAL: Verificando CPF...');
   
   const cpfRaw = document.getElementById('payCpf').value.trim();
   const cpf = cpfRaw.replace(/\D/g, '');
@@ -511,12 +497,9 @@ function verificarCpf(event) {
 
   // Validar CPF
   if (!isValidCPF(cpf)) {
-    console.log('❌ MODAL: CPF inválido');
     document.getElementById('payCpfInvalid').style.display = 'block';
     return false;
   }
-
-  console.log('✅ MODAL: CPF válido, consultando backend...');
 
   // Verificar CPF no backend
   fetch('/api/verificar-cpf/', {
@@ -529,7 +512,6 @@ function verificarCpf(event) {
   })
   .then(r => r.json())
   .then(data => {
-    console.log('📥 MODAL: Resposta verificação CPF:', data);
     
     if (data && data.found) {
       const u = data.user || {};
@@ -540,8 +522,6 @@ function verificarCpf(event) {
       // Mostrar dados do usuário e ações
       document.getElementById('payUserBox').style.display = 'block';
       document.getElementById('payActions').style.display = 'block';
-      
-      console.log('✅ MODAL: Usuário encontrado, botões habilitados');
       
     } else {
       console.log('❌ MODAL: CPF não encontrado');
@@ -558,13 +538,6 @@ function verificarCpf(event) {
 
 // Processar pagamento com dados corretos
 function processarPagamento() {
-  console.log('💳 MODAL: Processando pagamento...');
-  console.log('🔍 MODAL: Estado atual:', {
-    currentRifaId,
-    currentQuantidade,
-    currentValorTotal,
-    currentPedidoId
-  });
   
   // Validar dados obrigatórios
   if (!currentRifaId) {
@@ -592,12 +565,6 @@ function processarPagamento() {
   formData.append('cpf', cpf);
   formData.append('quantidade', currentQuantidade);
 
-  console.log('📤 MODAL: Enviando dados para criar pedido:', {
-    rifa_id: currentRifaId,
-    cpf: cpf,
-    quantidade: currentQuantidade
-  });
-
   fetch('/api/criar-pedido/', {
     method: 'POST',
     headers: {
@@ -607,13 +574,9 @@ function processarPagamento() {
   })
   .then(response => response.json())
   .then(data => {
-    console.log('📥 MODAL: Resposta criar pedido:', data);
-    
     if (data.success) {
       currentPedidoId = data.pedido_id;
       document.getElementById('hiddenPedidoId').value = currentPedidoId;
-      
-      console.log('✅ MODAL: Pedido criado com ID:', currentPedidoId);
       
       // Mostrar prêmios ganhos se houver
       if (data.premios_ganhos && data.premios_ganhos.length > 0) {
@@ -651,7 +614,6 @@ function processarPagamento() {
 
 // Gerar QR Code
 function gerarQRCode() {
-  console.log('🔄 MODAL: Gerando QR Code para pedido:', currentPedidoId);
   
   if (!currentPedidoId) {
     console.error('❌ MODAL: currentPedidoId não definido');
@@ -670,26 +632,20 @@ function gerarQRCode() {
   })
   .then(response => response.json())
   .then(data => {
-    console.log('📥 MODAL: Resposta gerar QR:', data);
-    
     document.getElementById('qrLoading').style.display = 'none';
     
     if (data.success) {
-      console.log('✅ MODAL: QR Code gerado com sucesso');
-      
       // Mostrar QR Code
       if (data.qr_code_base64) {
         const img = document.getElementById('modalQrImg');
         img.src = `data:image/png;base64,${data.qr_code_base64}`;
         document.getElementById('modalQrImage').style.display = 'block';
-        console.log('✅ MODAL: QR Code Base64 exibido');
       }
       
       // Mostrar código PIX
       if (data.qr_code) {
         document.getElementById('modalQrRaw').textContent = data.qr_code;
         document.getElementById('pixCodeContainer').style.display = 'block';
-        console.log('✅ MODAL: Código PIX exibido');
       }
       
       // Habilitar verificação automática
@@ -715,7 +671,6 @@ function checkPaymentStatus() {
   fetch(`/api/pedido/${currentPedidoId}/status/`)
   .then(response => response.json())
   .then(data => {
-    console.log('📊 MODAL: Status do pagamento:', data);
     if (data.success && data.status === 'pago') {
       alert('Pagamento confirmado! Recarregando página...');
       setTimeout(() => {
@@ -760,7 +715,6 @@ function downloadQR() {
 
 // Reset CPF
 function resetarCpfPagamento() {
-  console.log('🔄 MODAL: Resetando CPF...');
   document.getElementById('payCpf').value = '';
   document.getElementById('payUserBox').style.display = 'none';
   document.getElementById('payActions').style.display = 'none';
