@@ -1,6 +1,5 @@
 // SOLUÇÃO DEFINITIVA: Modificar openPaymentModal para aceitar 3 parâmetros
 function openPaymentModal(valorTotal, quantidade, rifaId) {
-  console.log('PAYMENT.JS - Modal aberto com:', { valorTotal, quantidade, rifaId });
   
   const backdrop = document.getElementById('paymentBackdrop');
   if (!backdrop) return;
@@ -10,11 +9,6 @@ function openPaymentModal(valorTotal, quantidade, rifaId) {
   document.getElementById('hiddenQuantidade').value = quantidade || '';
   document.getElementById('hiddenValorTotal').value = valorTotal || '';
   
-  console.log('PAYMENT.JS - Dados salvos:', {
-    rifaId: document.getElementById('hiddenRifaId').value,
-    quantidade: document.getElementById('hiddenQuantidade').value,
-    valorTotal: document.getElementById('hiddenValorTotal').value
-  });
   
   // Atualizar interface
   const span = document.getElementById('payValorTotal');
@@ -91,13 +85,9 @@ window.addEventListener('DOMContentLoaded', () => {
 function submitReserva(ev) {
   ev.preventDefault();
   
-  console.log('SUBMIT RESERVA CHAMADO');
-  
   // Ler dados dos campos hidden
   const rifaId = document.getElementById('hiddenRifaId').value;
   const quantidade = document.getElementById('hiddenQuantidade').value;
-  
-  console.log('DADOS DOS HIDDEN FIELDS:', { rifaId, quantidade });
   
   if (!rifaId || !quantidade) {
     alert('Erro: Dados do pedido perdidos. Recarregue a página.');
@@ -118,8 +108,6 @@ function submitReserva(ev) {
   formData.append('cpf', cpf);
   formData.append('quantidade', quantidade);
 
-  console.log('ENVIANDO PARA SERVIDOR:', { rifa_id: rifaId, cpf: cpf, quantidade: quantidade });
-
   fetch('/api/criar-pedido/', {
     method: 'POST', 
     body: formData, 
@@ -130,7 +118,6 @@ function submitReserva(ev) {
   })
   .then(r => r.json())
   .then(data => {
-    console.log('RESPOSTA DO SERVIDOR:', data);
     
     if (data.success && data.redirect) {
       // Se ganhou prêmios, informa antes de redirecionar
@@ -158,7 +145,6 @@ function submitReserva(ev) {
 
 // NOVA FUNÇÃO: processarPagamento para compatibilidade com o modal atual
 function processarPagamento() {
-  console.log('PROCESSAR PAGAMENTO CHAMADO');
   return submitReserva({ preventDefault: () => {} });
 }
 

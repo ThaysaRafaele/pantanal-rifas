@@ -342,7 +342,7 @@ class NumeroAdmin(admin.ModelAdmin):
             {% csrf_token %}
             <input type="hidden" name="ids" value="%s" />
             <div style="margin:8px 0;">
-              <label>Usuário:</label>
+              <label>Nome de Usuário:</label>
               <select name="user_id" style="min-width:300px;padding:8px;margin-left:8px;">
                 %s
               </select>

@@ -75,7 +75,7 @@ class MercadoPagoService:
                         "number": cpf_clean
                     }
             
-            # Dados do pagamento - formato simplificado conforme documentação
+            # Dados do pagamento - formato conforme documentação do Mercado Pago
             payment_data = {
                 "transaction_amount": float(amount),
                 "payment_method_id": "pix",
@@ -144,19 +144,23 @@ class MercadoPagoService:
                 "raw_response": result
             }
             
-            # Extrair QR Code e dados PIX
+            # Extrair QR Code e dados PIX da resposta
             point_of_interaction = result.get("point_of_interaction", {})
             transaction_data = point_of_interaction.get("transaction_data", {})
             
             if transaction_data:
-                payment_info["qr_code"] = transaction_data.get("qr_code")
+                # QR Code em Base64 para exibir como imagem
                 payment_info["qr_code_base64"] = transaction_data.get("qr_code_base64")
-                payment_info["pix_code"] = transaction_data.get("qr_code")  # Código PIX para copiar
+                
+                # Código PIX em texto para copiar/colar
+                payment_info["qr_code"] = transaction_data.get("qr_code")
+                payment_info["pix_code"] = transaction_data.get("qr_code")  # Alias
                 
                 logger.info(f"✅ QR Code extraído - Base64: {'SIM' if payment_info['qr_code_base64'] else 'NÃO'}, "
                           f"Texto: {'SIM' if payment_info['qr_code'] else 'NÃO'}")
             else:
                 logger.warning("⚠️ Nenhum transaction_data encontrado na resposta")
+                logger.warning(f"⚠️ Estrutura point_of_interaction: {point_of_interaction}")
             
             return payment_info
             
@@ -273,6 +277,78 @@ class MercadoPagoService:
             return {
                 "success": False,
                 "error": "Falha na conexão",
+                "details": str(e)
+            }
+
+    def criar_transferencia(
+        self, 
+        amount: float, 
+        receiver_id: str, 
+        description: str = "Transferência automática"
+    ) -> Dict[str, Any]:
+        """
+        Cria uma transferência de dinheiro para outro usuário do Mercado Pago
+        """
+        try:
+            url = f"{self.base_url}/v1/advanced_payments"
+            
+            headers = {
+                'Authorization': f'Bearer {self.access_token}',
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': f"transfer_{uuid.uuid4().hex[:12]}"
+            }
+            
+            transfer_data = {
+                "disbursements": [
+                    {
+                        "amount": float(amount),
+                        "external_reference": f"transfer_{uuid.uuid4().hex[:8]}",
+                        "collector_id": receiver_id,
+                        "application_fee": 0,
+                        "money_release_days": 0
+                    }
+                ],
+                "payer": {
+                    "email": "noreply@pantanaldasorte.com"  # Email do pagador
+                },
+                "description": description,
+                "external_reference": f"transfer_{uuid.uuid4().hex[:8]}"
+            }
+            
+            logger.info(f"🔄 Criando transferência no Mercado Pago")
+            logger.info(f"📤 Dados: {json.dumps(transfer_data, indent=2)}")
+            
+            response = requests.post(
+                url, 
+                headers=headers, 
+                data=json.dumps(transfer_data),
+                timeout=30
+            )
+            
+            logger.info(f"📥 Status transferência: {response.status_code}")
+            logger.info(f"📥 Response: {response.text}")
+            
+            if response.status_code not in [200, 201]:
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}",
+                    "details": response.text
+                }
+            
+            result = response.json()
+            
+            return {
+                "success": True,
+                "transfer_id": result.get("id"),
+                "status": result.get("status"),
+                "raw_response": result
+            }
+            
+        except Exception as e:
+            logger.exception(f"❌ Erro ao criar transferência: {e}")
+            return {
+                "success": False,
+                "error": "Erro interno",
                 "details": str(e)
             }
 

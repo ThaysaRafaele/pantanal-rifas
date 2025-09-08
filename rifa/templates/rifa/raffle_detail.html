@@ -242,7 +242,6 @@
 <script>
 // DECLARAR somarCotas GLOBALMENTE ANTES DA IIFE
 function somarCotas(qtde) {
-  console.log('📊 TEMPLATE: somarCotas chamado:', qtde);
   const input = document.getElementById('input-cotas');
   if (!input) return;
   
@@ -283,12 +282,6 @@ function somarCotas(qtde) {
   // Obter ID da rifa
   const rifaId = input.dataset.rifaId || document.querySelector('.sorteios-section')?.dataset?.rifaId;
 
-  console.log('📊 TEMPLATE: Dados iniciais:', {
-    precoUnit,
-    rifaId,
-    typeOfRifaId: typeof rifaId
-  });
-
   function formatBRL(v) {
     return (Number(v)||0).toLocaleString('pt-BR',{ style:'currency', currency:'BRL' });
   }
@@ -319,13 +312,6 @@ function somarCotas(qtde) {
       alertMin.classList.add('d-none');
       alertMin.textContent = '';
     }
-
-    console.log('📊 TEMPLATE: Valores atualizados:', {
-      qtd,
-      precoUnit,
-      total,
-      totalFormatado: formatBRL(total)
-    });
   }
 
   // Expor função de atualização globalmente
@@ -372,16 +358,7 @@ function somarCotas(qtde) {
     // Calcular valor total
     const total = precoUnit * qtd;
     const valorFormatado = formatBRL(total);
-    
-    console.log('🚀 TEMPLATE: Dados do pedido ao abrir modal:', {
-      quantidade: qtd,
-      precoUnitario: precoUnit,
-      valorTotal: total,
-      valorFormatado: valorFormatado,
-      rifaId: rifaId,
-      rifaIdType: typeof rifaId
-    });
-    
+        
     // Garantir que rifaId seja uma string válida
     const rifaIdString = rifaId ? String(rifaId) : null;
     
@@ -393,7 +370,6 @@ function somarCotas(qtde) {
     
     // Verificar se função do modal existe
     if (typeof openPaymentModal === 'function') {
-      console.log('✅ TEMPLATE: Chamando openPaymentModal com dados corretos');
       openPaymentModal(valorFormatado, qtd, rifaIdString);
     } else {
       console.error('❌ TEMPLATE: Função openPaymentModal não encontrada');

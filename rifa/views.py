@@ -12,11 +12,21 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 import mercadopago
+import re
 import json
+import uuid
+import random
+import decimal
 import logging
 import hmac
 import hashlib
+from django.utils import timezone
+from django.db import transaction
 
+from .models import Rifa, Numero, NumeroRifa, Pedido, PremioBilhete
+from .models_profile import UserProfile as Perfil
+
+# Logger
 logger = logging.getLogger(__name__)
 
 # View protegida para sortear rifa pelo painel do site
@@ -629,10 +639,6 @@ def api_usuario_por_cpf(request):
     except Exception:
         return JsonResponse({'found': False, 'message': 'Erro ao buscar CPF.'}, status=500)
 
-from django.utils import timezone
-from django.db import transaction
-import uuid, decimal, re, random
-from .models import Pedido, PremioBilhete
 @csrf_exempt
 def criar_pedido(request):
     """Cria pedido reservando bilhetes aleatórios.
@@ -698,8 +704,8 @@ def criar_pedido(request):
                 numeros_reservados.append(str(bilhete.numero))
         valor_total = preco * qtd
         txid = uuid.uuid4().hex[:25]
-        # Payload PIX simples placeholder (pode ser substituído por geração EMV se quiser depois)
-        pix_codigo = f"TXID:{txid}|RIFA:{rifa.id}|TOTAL:{valor_total:.2f}"
+        
+        # Criar o pedido primeiro
         pedido = Pedido.objects.create(
             user=user,
             rifa=rifa,
@@ -710,37 +716,52 @@ def criar_pedido(request):
             cpf=cpf_fmt,
             nome=user.first_name or user.username,
             telefone=getattr(profile,'telefone',''),
-            pix_codigo=pix_codigo,
+            pix_codigo=f"TXID:{txid}|RIFA:{rifa.id}|TOTAL:{valor_total:.2f}",  # Placeholder inicial
             pix_txid=txid,
             expires_at=timezone.now()+timezone.timedelta(hours=1)
         )
-        # Tentar criar pagamento PIX no provedor e salvar QR/código retornados
+        
+        # TENTAR CRIAR PAGAMENTO PIX IMEDIATAMENTE VIA MERCADO PAGO
         try:
-            from .mercadopago_service import criar_pagamento_pix
-            mp_resp = criar_pagamento_pix(float(valor_total), payer_email=user.email if user.email else None, external_reference=str(pedido.id), description=f'Rifa {rifa.id} - Pedido {pedido.id}')
-            # Extrai id e point_of_interaction
-            if isinstance(mp_resp, dict):
-                mp_id = mp_resp.get('id') or (mp_resp.get('response') or {}).get('id')
-                if mp_id:
-                    pedido.mercado_pago_payment_id = str(mp_id)
-                # tenta extrair qr base64
-                poi = (mp_resp.get('point_of_interaction') or (mp_resp.get('response') or {}).get('point_of_interaction') or {})
-                tx = (poi.get('transaction_data') or {}) if isinstance(poi, dict) else {}
-                qr_base64 = tx.get('qr_code_base64') or None
-                qr_text = tx.get('qr_code') or None
-                if qr_base64:
-                    pedido.pix_qr_base64 = qr_base64
-                if qr_text and not pedido.pix_qr_base64:
-                    # quando só temos texto do QR, também salvamos no pix_codigo para exibir
-                    pedido.pix_codigo = qr_text
-                # atualiza pix_txid/mercado id
-                try:
-                    pedido.save(update_fields=['mercado_pago_payment_id','pix_qr_base64','pix_codigo','pix_txid'])
-                except Exception:
-                    pedido.save()
+            from .mercadopago_service import MercadoPagoService
+            mp_service = MercadoPagoService()
+            
+            # Dados para o pagamento
+            description = f'Rifa {rifa.titulo} - Pedido #{pedido.id}'
+            
+            logger.info(f"Criando pagamento PIX automático para pedido {pedido.id}")
+            
+            # Criar pagamento PIX
+            mp_resp = mp_service.criar_pagamento_pix(
+                amount=float(valor_total),
+                description=description,
+                payer_email=user.email if user.email else None,
+                external_reference=str(pedido.id),
+                payer_cpf=cpf_fmt
+            )
+            
+            # Salvar dados do Mercado Pago se sucesso
+            if mp_resp.get('success'):
+                if mp_resp.get('payment_id'):
+                    pedido.mercado_pago_payment_id = str(mp_resp['payment_id'])
+                    pedido.pix_txid = str(mp_resp['payment_id'])
+                
+                if mp_resp.get('qr_code_base64'):
+                    pedido.pix_qr_base64 = mp_resp['qr_code_base64']
+                
+                if mp_resp.get('qr_code'):
+                    pedido.pix_codigo = mp_resp['qr_code']
+                
+                pedido.save(update_fields=['mercado_pago_payment_id','pix_qr_base64','pix_codigo','pix_txid'])
+                logger.info(f"Pagamento PIX criado com sucesso para pedido {pedido.id}")
+            else:
+                logger.warning(f"Falha ao criar pagamento PIX automático: {mp_resp.get('error')}")
+                
         except Exception as e:
-            logger.exception('Não foi possível criar pagamento PIX automático: %s', e)
-        # Checa prêmios ganhos
+            logger.exception('Erro ao criar pagamento PIX automático: %s', e)
+            # Continua com o placeholder, o QR será gerado na tela de pagamento
+        
+        # Verificar prêmios ganhos
         numeros_int = [int(x) for x in numeros_reservados]
         premios_ativos = PremioBilhete.objects.filter(rifa=rifa, ativo=True, ganho_por__isnull=True, numero_premiado__in=numeros_int)
         premios_ganhos = []
@@ -751,9 +772,17 @@ def criar_pedido(request):
                 premio.ganho_em = timezone.now()
                 premio.save(update_fields=['ganho_por','pedido','ganho_em'])
                 premios_ganhos.append({'numero':premio.numero_premiado,'valor':float(premio.valor_premio)})
-        return JsonResponse({'success':True,'pedido_id':pedido.id,'redirect':f"/pedido/{pedido.id}/pix/",'premios_ganhos':premios_ganhos})
+        
+        return JsonResponse({
+            'success': True,
+            'pedido_id': pedido.id,
+            'redirect': f"/pedido/{pedido.id}/pix/",
+            'premios_ganhos': premios_ganhos
+        })
     except Exception as e:
-        return JsonResponse({'error':str(e)}, status=500)
+        logger.exception('Erro ao criar pedido: %s', e)
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 def pedido_pix(request, pedido_id):
     try:
@@ -778,7 +807,6 @@ def pedido_pix(request, pedido_id):
         if getattr(settings, 'DEBUG', False):
             return HttpResponse(f'<h1>Erro ao abrir pedido #{pedido_id}</h1><pre>{str(e)}</pre>', status=500)
         return HttpResponse('<h1>Erro ao abrir pedido</h1>', status=500)
-
 
 @csrf_exempt
 def gerar_qr_code(request):
@@ -806,8 +834,9 @@ def gerar_qr_code(request):
             logger.error(f"Erro ao buscar pedido {pedido_id}: {e}")
             return JsonResponse({'error': f'Pedido {pedido_id} não encontrado'}, status=404)
         
-        # Se já existe QR salvo no pedido, retorna imediatamente
-        if pedido.pix_qr_base64:
+        # IMPORTANTE: Se já existe QR salvo no pedido, retorna imediatamente
+        if pedido.pix_qr_base64 and pedido.pix_codigo:
+            logger.info(f"Retornando QR Code já existente para pedido {pedido_id}")
             return JsonResponse({
                 "success": True,
                 "payment_id": pedido.mercado_pago_payment_id,
@@ -818,7 +847,7 @@ def gerar_qr_code(request):
                 "pedido_id": pedido_id
             })
 
-        # Usar o novo serviço do Mercado Pago
+        # Usar o serviço do Mercado Pago para criar pagamento PIX
         try:
             from .mercadopago_service import MercadoPagoService
             mp_service = MercadoPagoService()
@@ -833,8 +862,8 @@ def gerar_qr_code(request):
             # CPF do pedido ou do perfil do usuário
             if pedido.cpf:
                 payer_cpf = pedido.cpf
-            elif pedido.user and hasattr(pedido.user, 'profile') and pedido.user.profile.cpf:
-                payer_cpf = pedido.user.profile.cpf
+            elif pedido.user and hasattr(pedido.user, 'userprofile') and pedido.user.userprofile.cpf:
+                payer_cpf = pedido.user.userprofile.cpf
             
             # Descrição do pagamento
             description = f'Rifa {pedido.rifa.titulo} - Pedido #{pedido.id}'
@@ -842,7 +871,7 @@ def gerar_qr_code(request):
             logger.info(f"Criando pagamento PIX para pedido {pedido_id}: "
                        f"valor={pedido.valor_total}, email={payer_email}, cpf={payer_cpf}")
             
-            # Criar pagamento PIX
+            # Criar pagamento PIX no Mercado Pago
             payment_result = mp_service.criar_pagamento_pix(
                 amount=float(pedido.valor_total),
                 description=description,
@@ -871,22 +900,27 @@ def gerar_qr_code(request):
                     'status': 'pending',
                     'fallback': True,
                     'message': 'QR Code gerado localmente (Mercado Pago indisponível)',
-                    'error_details': payment_result.get('details'),
+                    'error_details': payment_result.get('error'),
                     'pedido_id': pedido_id
                 })
 
-            # Salvar dados no pedido
+            # SALVAR DADOS DO MERCADO PAGO NO PEDIDO
             try:
                 if payment_result.get("payment_id"):
                     pedido.mercado_pago_payment_id = str(payment_result["payment_id"])
                     pedido.pix_txid = str(payment_result["payment_id"])
                 
+                # Salvar QR Code Base64 se disponível
                 if payment_result.get("qr_code_base64"):
                     pedido.pix_qr_base64 = payment_result["qr_code_base64"]
                 
+                # Salvar código PIX para copiar/colar
                 if payment_result.get("qr_code"):
                     pedido.pix_codigo = payment_result["qr_code"]
+                elif payment_result.get("pix_code"):
+                    pedido.pix_codigo = payment_result["pix_code"]
                 
+                # Salvar todas as alterações
                 pedido.save(update_fields=[
                     'mercado_pago_payment_id', 
                     'pix_qr_base64', 
@@ -902,11 +936,11 @@ def gerar_qr_code(request):
             return JsonResponse({
                 "success": True,
                 "payment_id": payment_result.get("payment_id"),
-                "qr_code": payment_result.get("qr_code"),
+                "qr_code": payment_result.get("qr_code") or payment_result.get("pix_code"),
                 "qr_code_base64": payment_result.get("qr_code_base64"),
                 "status": payment_result.get("status", "pending"),
                 "pedido_id": pedido_id,
-                "message": "QR Code gerado com sucesso"
+                "message": "QR Code gerado com sucesso via Mercado Pago"
             })
 
         except Exception as e:
@@ -944,6 +978,7 @@ def gerar_qr_code(request):
             'error': 'Erro interno do servidor',
             'details': str(e)
         }, status=500)
+
 
 @csrf_exempt
 def pagamento_webhook(request):

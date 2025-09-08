@@ -715,19 +715,14 @@ function editarRifa(rifaId) {
       
       // Controlar botão de sortear
       const btnSortear = document.getElementById('btnSortearRifa');
-      console.log('Dados da rifa:', data); // Debug
-      console.log('Botão sortear encontrado:', btnSortear); // Debug
       
       if (btnSortear) {
-        console.log('Encerrada:', data.encerrada, 'Números vendidos:', data.numeros_vendidos); // Debug
         if (!data.encerrada) {
           // Mostrar botão para rifas ativas (para teste, vamos sempre mostrar)
           btnSortear.style.display = 'inline-block';
           rifaParaSortear = rifaId; // Definir rifa para sorteio
-          console.log('Botão sortear exibido'); // Debug
         } else {
           btnSortear.style.display = 'none';
-          console.log('Botão sortear oculto - Rifa encerrada'); // Debug
         }
       }
       
@@ -741,7 +736,6 @@ function editarRifa(rifaId) {
     })
     .catch(error => {
       setAdminButtonsState(true);
-      console.error('Erro ao carregar dados da rifa:', error);
       showNotification('Erro ao carregar dados da rifa. Tente novamente.', 'error');
     });
 }
