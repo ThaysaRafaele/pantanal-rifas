@@ -201,3 +201,27 @@ LOGGING = {
         },
     },
 }
+
+# Configurações de produção
+ALLOWED_HOSTS = ['82.29.58.76', 'pantanaldasortems.com', 'www.pantanaldasortems.com']
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'pantanal_rifas',
+        'USER': 'pantanal_user',
+        'PASSWORD': 'Pantanal2025@@',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+DEBUG = False
+
+STATIC_ROOT = '/var/www/pantanal-da-sorte/staticfiles/'
+MEDIA_ROOT = '/var/www/pantanal-da-sorte/media/'
+
+# Configurações de segurança
+SECURE_SSL_REDIRECT = False
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True

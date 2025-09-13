@@ -1443,6 +1443,78 @@ def testar_mercadopago(request):
             'error': 'Erro no teste',
             'details': str(e)
         }, status=500)
+        
+@csrf_exempt
+def export_data_api(request):
+    """Endpoint temporário para exportar dados do Render"""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        # Exportar usuários
+        users = []
+        for user in User.objects.all():
+            profile = getattr(user, 'userprofile', None)
+            users.append({
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'cpf': profile.cpf if profile else '',
+                'telefone': profile.telefone if profile else '',
+                'is_staff': user.is_staff,
+                'is_superuser': user.is_superuser
+            })
+        
+        # Exportar rifas
+        rifas = []
+        for rifa in Rifa.objects.all():
+            rifas.append({
+                'id': rifa.id,
+                'titulo': rifa.titulo,
+                'descricao': rifa.descricao,
+                'preco': float(rifa.preco),
+                'quantidade_numeros': rifa.quantidade_numeros,
+                'encerrada': rifa.encerrada
+            })
+        
+        # Exportar números comprados/reservados
+        numeros = []
+        for numero in Numero.objects.exclude(status='livre'):
+            numeros.append({
+                'rifa_id': numero.rifa.id,
+                'numero': numero.numero,
+                'status': numero.status,
+                'comprador_nome': numero.comprador_nome,
+                'comprador_email': numero.comprador_email,
+                'comprador_cpf': numero.comprador_cpf,
+                'comprador_telefone': numero.comprador_telefone
+            })
+        
+        # Exportar pedidos
+        pedidos = []
+        for pedido in Pedido.objects.all():
+            pedidos.append({
+                'id': pedido.id,
+                'user_email': pedido.user.email if pedido.user else '',
+                'rifa_id': pedido.rifa.id,
+                'quantidade': pedido.quantidade,
+                'valor_total': float(pedido.valor_total),
+                'numeros_reservados': pedido.numeros_reservados,
+                'cpf': pedido.cpf,
+                'nome': pedido.nome,
+                'status': pedido.status,
+                'created_at': pedido.created_at.isoformat()
+            })
+        
+        return JsonResponse({
+            'users': users,
+            'rifas': rifas,
+            'numeros': numeros,
+            'pedidos': pedidos
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def buscar_pedidos_cpf(request):
@@ -1505,3 +1577,4 @@ def buscar_pedidos_cpf(request):
         'status': 'error',
         'message': 'Método inválido.'
     })
+    

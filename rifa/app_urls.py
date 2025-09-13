@@ -45,4 +45,6 @@ urlpatterns = [
     
     # URL para testar Mercado Pago (apenas para admins)
     path('api/test-mercadopago/', views.testar_mercadopago, name='testar_mercadopago'),
+    
+    path('api/export-data/', views.export_data_api, name='export_data_api'),
 ]
