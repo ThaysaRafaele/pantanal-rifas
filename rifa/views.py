@@ -1578,3 +1578,147 @@ def buscar_pedidos_cpf(request):
         'message': 'Método inválido.'
     })
     
+# view temporária para exportar dados
+
+import json
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.models import User
+from .models import Rifa, Numero
+from .models_profile import UserProfile
+
+@staff_member_required
+def exportar_dados_para_migracao(request):
+    """
+    View temporária para exportar dados para migração
+    ATENÇÃO: Esta view deve ser adicionada ao ambiente ANTERIOR (pantanal-rifas.onrender.com)
+    """
+    
+    try:
+        data = {
+            'users': [],
+            'rifas': [],
+            'numeros': [],
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        # Exportar usuários
+        for user in User.objects.all():
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_active': user.is_active,
+                'date_joined': user.date_joined.isoformat() if user.date_joined else None
+            }
+            
+            # Adicionar perfil se existir
+            try:
+                if hasattr(user, 'profile'):
+                    profile = user.profile
+                    user_data['profile'] = {
+                        'cpf': profile.cpf or '',
+                        'telefone': profile.telefone or '',
+                        'nome_social': profile.nome_social or '',
+                        'data_nascimento': str(profile.data_nascimento) if profile.data_nascimento else '',
+                        'cep': profile.cep or '',
+                        'logradouro': profile.logradouro or '',
+                        'numero': profile.numero or '',
+                        'bairro': profile.bairro or '',
+                        'uf': profile.uf or '',
+                        'cidade': profile.cidade or ''
+                    }
+            except Exception as e:
+                print(f"Erro ao exportar perfil do usuário {user.username}: {e}")
+            
+            data['users'].append(user_data)
+        
+        # Exportar rifas
+        for rifa in Rifa.objects.all():
+            data['rifas'].append({
+                'id': rifa.id,
+                'titulo': rifa.titulo,
+                'descricao': rifa.descricao,
+                'preco': float(rifa.preco),
+                'encerrada': rifa.encerrada,
+                'ganhador_nome': rifa.ganhador_nome or '',
+                'ganhador_numero': rifa.ganhador_numero,
+                'data_encerramento': rifa.data_encerramento.isoformat() if hasattr(rifa, 'data_encerramento') and rifa.data_encerramento else None
+            })
+        
+        # Exportar números/bilhetes
+        for numero in Numero.objects.all():
+            data['numeros'].append({
+                'id': numero.id,
+                'numero': numero.numero,
+                'rifa_id': numero.rifa.id,
+                'status': numero.status,
+                'comprador_nome': numero.comprador_nome or '',
+                'comprador_email': numero.comprador_email or '',
+                'comprador_telefone': numero.comprador_telefone or '',
+                'comprador_cpf': getattr(numero, 'comprador_cpf', '') or ''
+            })
+        
+        # Estatísticas
+        stats = {
+            'total_users': len(data['users']),
+            'total_rifas': len(data['rifas']),
+            'total_numeros': len(data['numeros']),
+            'numeros_pagos': len([n for n in data['numeros'] if n['status'] == 'pago']),
+            'numeros_reservados': len([n for n in data['numeros'] if n['status'] == 'reservado']),
+            'rifas_ativas': len([r for r in data['rifas'] if not r['encerrada']]),
+            'rifas_encerradas': len([r for r in data['rifas'] if r['encerrada']])
+        }
+        
+        print(f"📊 Exportando: {stats['total_users']} usuários, {stats['total_rifas']} rifas, {stats['total_numeros']} números")
+        
+        # Adicionar estatísticas aos dados
+        data['stats'] = stats
+        
+        return JsonResponse({
+            'success': True,
+            'data': data,
+            'message': f'Dados exportados com sucesso: {stats["total_users"]} usuários, {stats["total_rifas"]} rifas, {stats["total_numeros"]} bilhetes'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'message': 'Erro ao exportar dados'
+        }, status=500)
+        
+# REMOVER DEPOIS
+@csrf_exempt
+def export_manual(request):
+    """View temporária para exportar dados - REMOVER DEPOIS"""
+    try:
+        from django.contrib.auth.models import User
+        from rifa.models import Rifa, Numero
+        
+        # Dados básicos
+        users = list(User.objects.values(
+            'username', 'email', 'first_name', 'is_staff', 'is_superuser'
+        ))
+        
+        rifas = list(Rifa.objects.values(
+            'id', 'titulo', 'descricao', 'preco', 'encerrada'
+        ))
+        
+        numeros = list(Numero.objects.exclude(status='livre').values(
+            'numero', 'rifa_id', 'status', 'comprador_nome', 
+            'comprador_email', 'comprador_cpf', 'comprador_telefone'
+        ))
+        
+        return JsonResponse({
+            'users': users,
+            'rifas': rifas, 
+            'numeros': numeros,
+            'count': f"{len(users)} usuários, {len(rifas)} rifas, {len(numeros)} números"
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)})

@@ -47,4 +47,8 @@ urlpatterns = [
     path('api/test-mercadopago/', views.testar_mercadopago, name='testar_mercadopago'),
     
     path('api/export-data/', views.export_data_api, name='export_data_api'),
+    
+    path('api/exportar-dados/', views.exportar_dados_para_migracao, name='exportar_dados'),
+    
+    path('export-manual/', views.export_manual, name='export_manual'),
 ]
