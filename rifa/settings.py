@@ -14,8 +14,9 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [
     'localhost', 
     '127.0.0.1',
-    '.onrender.com',  # Permite qualquer subdomínio do Render
+    '.onrender.com', 
     'pantanal.onrender.com',
+    'pantanal-rifas.onrender.com',
     'www.pantanaldasortems.com', 
     'pantanaldasortems.com'
 ]
@@ -32,7 +33,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Para servir arquivos estáticos
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -92,17 +93,33 @@ TIME_ZONE = 'America/Cuiaba'
 USE_I18N = True
 USE_TZ = True
 
-# Static files configuration
+# Static files configuration para Render
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Em produção no Render, usar pasta relativa ao projeto
+if 'RENDER' in os.environ or not DEBUG:
+    # Produção: usar pasta dentro do projeto
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+else:
+    # Desenvolvimento: manter caminho original 
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Verificar se pasta static existe antes de adicionar
+static_dir = BASE_DIR / 'static'
+if static_dir.exists():
+    STATICFILES_DIRS = [static_dir]
+else:
+    STATICFILES_DIRS = []
 
 # Whitenoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+if 'RENDER' in os.environ or not DEBUG:
+    # Em produção, usar pasta dentro do projeto (Render não permite /var/www)
+    MEDIA_ROOT = BASE_DIR / 'media'
+else:
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -115,7 +132,6 @@ LOGOUT_REDIRECT_URL = '/'
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
-    # Configure SMTP para produção se necessário
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Security settings para produção
@@ -125,7 +141,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_REDIRECT_EXEMPT = []
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False  
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
@@ -134,25 +150,21 @@ if not DEBUG:
 # =======================
 MERCADOPAGO_PUBLIC_KEY = os.getenv(
     "MERCADOPAGO_PUBLIC_KEY",
-    # "APP_USR-2b928fc8-0a66-461b-b9b4-daac8737c198"
     "APP_USR-047e3cad-def8-4095-90eb-0c7f17c41f66"
 )
 
 MERCADOPAGO_ACCESS_TOKEN = os.getenv(
     "MERCADOPAGO_ACCESS_TOKEN",
-    # "APP_USR-5791646844116557-090620-60f7b4822bce105687cb6339f9a99e64-190769772"
     "APP_USR-8930969594811512-090621-dae49d97322647d22509cb48b959867c-217387767"
 )
 
 MERCADOPAGO_CLIENT_ID = os.getenv(
     "MERCADOPAGO_CLIENT_ID",
     "8930969594811512"
-    # "5791646844116557"
 )
 
 MERCADOPAGO_CLIENT_SECRET = os.getenv(
     "MERCADOPAGO_CLIENT_SECRET",
-    # "Kz1LwAcsCZT67FaLhYshFzQuE49CnZPj"
     "vpxjHw2HXIJKKeFtcZSrGY4iMEOUDr8I"
 )
 
@@ -201,27 +213,3 @@ LOGGING = {
         },
     },
 }
-
-# Configurações de produção
-ALLOWED_HOSTS = ['82.29.58.76', 'pantanaldasortems.com', 'www.pantanaldasortems.com']
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pantanal_rifas',
-        'USER': 'pantanal_user',
-        'PASSWORD': 'Pantanal2025@@',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-
-DEBUG = False
-
-STATIC_ROOT = '/var/www/pantanal-da-sorte/staticfiles/'
-MEDIA_ROOT = '/var/www/pantanal-da-sorte/media/'
-
-# Configurações de segurança
-SECURE_SSL_REDIRECT = False
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
