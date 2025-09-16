@@ -1690,6 +1690,112 @@ def exportar_dados_para_migracao(request):
             'error': str(e),
             'message': 'Erro ao exportar dados'
         }, status=500)
+
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
+from django.db import transaction
+import time
+
+@staff_member_required
+def gerar_bilhetes_web(request):
+    """View temporária para gerar bilhetes em produção via web"""
+    
+    rifa_id = request.GET.get('rifa_id')
+    dry_run = request.GET.get('dry_run', 'false').lower() == 'true'
+    
+    if not rifa_id:
+        return HttpResponse("""
+        <h2>Gerar Bilhetes - Produção</h2>
+        <p>Especifique o ID da rifa:</p>
+        <a href="?rifa_id=10&dry_run=true">🧪 Teste Rifa ID 10 (dry-run)</a><br>
+        <a href="?rifa_id=11&dry_run=true">🧪 Teste Rifa ID 11 (dry-run)</a><br><br>
+        <a href="?rifa_id=10">⚡ EXECUTAR Rifa ID 10</a><br>
+        <a href="?rifa_id=11">⚡ EXECUTAR Rifa ID 11</a><br><br>
+        <strong>ATENÇÃO:</strong> Execute primeiro em modo teste!
+        """)
+    
+    try:
+        rifa = get_object_or_404(Rifa, id=rifa_id)
+        
+        output = []
+        output.append(f"<h2>Processando Rifa: {rifa.titulo} (ID: {rifa.id})</h2>")
+        output.append(f"<p>Limite configurado: {rifa.quantidade_numeros:,} bilhetes</p>")
+        
+        # Verificar bilhetes existentes
+        numeros_existentes = set(Numero.objects.filter(rifa=rifa).values_list('numero', flat=True))
+        total_existentes = len(numeros_existentes)
+        
+        output.append(f"<p>Bilhetes já existentes: {total_existentes:,}</p>")
+        
+        faltantes = rifa.quantidade_numeros - total_existentes
+        
+        if faltantes <= 0:
+            output.append(f"<p style='color: green;'>✅ Rifa já possui {total_existentes:,} bilhetes</p>")
+            return HttpResponse('<br>'.join(output))
+        
+        output.append(f"<p>Bilhetes faltantes: {faltantes:,}</p>")
+        
+        # Determinar números a criar
+        numeros_para_criar = []
+        for numero in range(1, rifa.quantidade_numeros + 1):
+            if numero not in numeros_existentes:
+                numeros_para_criar.append(numero)
+        
+        output.append(f"<p>Números a serem criados: {len(numeros_para_criar):,}</p>")
+        
+        if dry_run:
+            output.append(f"<p style='color: orange;'>[DRY RUN] Seriam criados {len(numeros_para_criar):,} bilhetes</p>")
+            if numeros_para_criar:
+                exemplos = numeros_para_criar[:10]
+                output.append(f"<p>Exemplos: {exemplos}...</p>")
+            output.append(f"<p><a href='?rifa_id={rifa_id}'>▶️ EXECUTAR REAL</a></p>")
+            return HttpResponse('<br>'.join(output))
+        
+        # Executar criação
+        output.append("<h3>Executando criação de bilhetes...</h3>")
+        batch_size = 1000
+        total_criados = 0
+        
+        for i in range(0, len(numeros_para_criar), batch_size):
+            lote = numeros_para_criar[i:i + batch_size]
+            
+            try:
+                with transaction.atomic():
+                    bilhetes_para_criar = [
+                        Numero(
+                            rifa=rifa,
+                            numero=numero,
+                            status='livre'
+                        ) for numero in lote
+                    ]
+                    
+                    Numero.objects.bulk_create(bilhetes_para_criar, ignore_conflicts=True)
+                    total_criados += len(lote)
+                    
+                    lote_num = i//batch_size + 1
+                    output.append(f"<p>✓ Lote {lote_num}: {len(lote):,} bilhetes criados (Total: {total_criados:,})</p>")
+                    
+            except Exception as e:
+                output.append(f"<p style='color: red;'>❌ Erro no lote {i//batch_size + 1}: {e}</p>")
+                continue
+        
+        # Verificação final
+        total_final = Numero.objects.filter(rifa=rifa).count()
+        output.append(f"<h3 style='color: green;'>✅ CONCLUÍDO</h3>")
+        output.append(f"<p>Rifa '{rifa.titulo}' agora possui {total_final:,} bilhetes</p>")
+        
+        # Estatísticas
+        from django.db.models import Count
+        stats = Numero.objects.filter(rifa=rifa).values('status').annotate(total=Count('id'))
+        output.append("<h4>📊 ESTATÍSTICAS:</h4>")
+        for stat in stats:
+            output.append(f"<p>- {stat['status'].title()}: {stat['total']:,}</p>")
+        
+        return HttpResponse('<br>'.join(output))
+        
+    except Exception as e:
+        return HttpResponse(f"<h2>Erro:</h2><p>{str(e)}</p>")
         
 # REMOVER DEPOIS
 @csrf_exempt

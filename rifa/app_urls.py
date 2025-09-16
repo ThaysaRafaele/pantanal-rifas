@@ -51,4 +51,7 @@ urlpatterns = [
     path('api/exportar-dados/', views.exportar_dados_para_migracao, name='exportar_dados'),
     
     path('export-manual/', views.export_manual, name='export_manual'),
+
+    # URL temporária para gerar bilhetes em produção (REMOVER DEPOIS)
+    path('admin/gerar-bilhetes/', views.gerar_bilhetes_web, name='gerar_bilhetes_web'),
 ]
