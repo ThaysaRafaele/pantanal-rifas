@@ -27,5 +27,17 @@
 
     <button type="submit" class="btn btn-primary w-100">Entrar</button>
   </form>
+
+  <div class="text-center mt-3">
+    <a href="/password_reset/" class="text-decoration-none">
+      <i class="fas fa-key"></i> Esqueceu a senha?
+    </a>
+  </div>
+
+  <div class="text-center mt-2">
+    <a href="{% url 'cadastro' %}" class="text-decoration-none">
+      Não tem conta? <strong>Cadastre-se</strong>
+    </a>
+  </div>
 </div>
 {% endblock %}
