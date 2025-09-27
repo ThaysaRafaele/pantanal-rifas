@@ -1,6 +1,32 @@
 from django.urls import path
 from . import views
 
+# Importar as views para reset de senha
+from django.contrib.auth.views import (
+    PasswordResetView, 
+    PasswordResetDoneView,
+    PasswordResetConfirmView,
+    PasswordResetCompleteView
+)
+from django.urls import reverse_lazy
+
+# Views para reset de senha
+class CustomPasswordResetView(PasswordResetView):
+    template_name = 'registration/password_reset_form.html'
+    success_url = reverse_lazy('password_reset_done')
+    email_template_name = 'registration/password_reset_email.html'
+    subject_template_name = 'registration/password_reset_subject.txt'
+
+class CustomPasswordResetDoneView(PasswordResetDoneView):
+    template_name = 'registration/password_reset_done.html'
+
+class CustomPasswordResetConfirmView(PasswordResetConfirmView):
+    template_name = 'registration/password_reset_confirm.html'
+    success_url = reverse_lazy('password_reset_complete')
+
+class CustomPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = 'registration/password_reset_complete.html'
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('rifa/<int:raffle_id>/', views.raffle_detail, name='raffle-detail'),
@@ -31,6 +57,12 @@ urlpatterns = [
     path('api/rifa/<int:rifa_id>/premios/', views.api_premios_rifa, name='api_premios_rifa'),
     path('api/rifa/<int:rifa_id>/premio/<int:premio_id>/excluir/', views.excluir_premio, name='excluir_premio'),
 
+    # URLs para reset de senha 
+    path('password_reset/', CustomPasswordResetView.as_view(), name='password_reset'),
+    path('password_reset/done/', CustomPasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', CustomPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', CustomPasswordResetCompleteView.as_view(), name='password_reset_complete'),
+
     # Rota para buscar números de bilhetes comprados - por CPF
     path('buscar-pedidos-cpf/', views.buscar_pedidos_cpf, name='buscar_pedidos_cpf'),
 
@@ -52,6 +84,9 @@ urlpatterns = [
     
     path('export-manual/', views.export_manual, name='export_manual'),
 
-    # URL temporária para gerar bilhetes em produção (REMOVER DEPOIS)
+    # URL para testar email (apenas para admins)
+    path('admin/test-email/', views.testar_email, name='testar_email'),
+
+    # URL temporária para gerar bilhetes em produção
     path('admin/gerar-bilhetes/', views.gerar_bilhetes_web, name='gerar_bilhetes_web'),
 ]

@@ -4,13 +4,9 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Security
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
-
-# Debug baseado em ambiente
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# Hosts permitidos
 ALLOWED_HOSTS = [
     'localhost', 
     '127.0.0.1',
@@ -62,9 +58,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'rifa.wsgi.application'
 
-# Database configuration
+# Database
 if 'DATABASE_URL' in os.environ:
-    # Produção: PostgreSQL via Render
     DATABASES = {
         'default': dj_database_url.parse(
             os.environ.get('DATABASE_URL'),
@@ -73,7 +68,6 @@ if 'DATABASE_URL' in os.environ:
         )
     }
 else:
-    # Desenvolvimento: SQLite local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -93,30 +87,24 @@ TIME_ZONE = 'America/Cuiaba'
 USE_I18N = True
 USE_TZ = True
 
-# Static files configuration para Render
+# Static files
 STATIC_URL = '/static/'
-
-# Em produção no Render, usar pasta relativa ao projeto
 if 'RENDER' in os.environ or not DEBUG:
-    # Produção: usar pasta dentro do projeto
     STATIC_ROOT = BASE_DIR / 'staticfiles'
 else:
-    # Desenvolvimento: manter caminho original 
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Verificar se pasta static existe antes de adicionar
 static_dir = BASE_DIR / 'static'
 if static_dir.exists():
     STATICFILES_DIRS = [static_dir]
 else:
     STATICFILES_DIRS = []
 
-# Whitenoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files
 MEDIA_URL = '/media/'
 if 'RENDER' in os.environ or not DEBUG:
-    # Em produção, usar pasta dentro do projeto (Render não permite /var/www)
     MEDIA_ROOT = BASE_DIR / 'media'
 else:
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -128,11 +116,24 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# Email backend
+# Email configuration
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'pantanaldasortems@gmail.com')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'wvds ohna hkoc aosx')
+    DEFAULT_FROM_EMAIL = 'Pantanal da Sorte <pantanaldasortems@gmail.com>'
+    EMAIL_SUBJECT_PREFIX = '[Pantanal da Sorte] '
+    EMAIL_USE_SSL = False
+    EMAIL_TIMEOUT = 30
+
+SITE_ID = 1
+ADMINS = [('Admin', 'pantanaldasortems@gmail.com')]
+MANAGERS = ADMINS
 
 # Security settings para produção
 if not DEBUG:
@@ -145,28 +146,17 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# =======================
-# 🔑 Mercado Pago Config
-# =======================
+# Mercado Pago Config
 MERCADOPAGO_PUBLIC_KEY = os.getenv(
     "MERCADOPAGO_PUBLIC_KEY",
     "APP_USR-047e3cad-def8-4095-90eb-0c7f17c41f66"
 )
-
 MERCADOPAGO_ACCESS_TOKEN = os.getenv(
     "MERCADOPAGO_ACCESS_TOKEN",
     "APP_USR-8930969594811512-090621-dae49d97322647d22509cb48b959867c-217387767"
 )
-
-MERCADOPAGO_CLIENT_ID = os.getenv(
-    "MERCADOPAGO_CLIENT_ID",
-    "8930969594811512"
-)
-
-MERCADOPAGO_CLIENT_SECRET = os.getenv(
-    "MERCADOPAGO_CLIENT_SECRET",
-    "vpxjHw2HXIJKKeFtcZSrGY4iMEOUDr8I"
-)
+MERCADOPAGO_CLIENT_ID = os.getenv("MERCADOPAGO_CLIENT_ID", "8930969594811512")
+MERCADOPAGO_CLIENT_SECRET = os.getenv("MERCADOPAGO_CLIENT_SECRET", "vpxjHw2HXIJKKeFtcZSrGY4iMEOUDr8I")
 
 # Dados do Lenon para transfers
 LENON_EMAIL = os.getenv("LENON_EMAIL", "lenonms543@gmail.com")
@@ -174,13 +164,12 @@ LENON_CPF = os.getenv("LENON_CPF", "01800818106")
 LENON_USER_ID = os.getenv("LENON_USER_ID", "217387767")
 TAXA_PLATAFORMA = float(os.getenv("TAXA_PLATAFORMA", "0.00"))
 
-# Webhook secret
 MERCADOPAGO_WEBHOOK_SECRET = os.getenv(
     "MERCADOPAGO_WEBHOOK_SECRET",
     "edbd5177af11d0917d78100f19e5f819694608d6c12d82355fb05037b6b536b5"
 )
 
-# Logging configuration
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
