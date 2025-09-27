@@ -31,27 +31,21 @@ urlpatterns = [
     path('api/rifa/<int:rifa_id>/premios/', views.api_premios_rifa, name='api_premios_rifa'),
     path('api/rifa/<int:rifa_id>/premio/<int:premio_id>/excluir/', views.excluir_premio, name='excluir_premio'),
 
-    # Rota para buscar números de bilhetes comprados - por CPF
-    path('buscar-pedidos-cpf/', views.buscar_pedidos_cpf, name='buscar_pedidos_cpf'),
+    path('password_reset/', views.CustomPasswordResetView.as_view(), name='password_reset'),
+    path('password_reset/done/', views.CustomPasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', views.CustomPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', views.CustomPasswordResetCompleteView.as_view(), name='password_reset_complete'),
 
-    # Rotas de teste/integração com Mercado Pago
+    path('buscar-pedidos-cpf/', views.buscar_pedidos_cpf, name='buscar_pedidos_cpf'),
     path('pagamento/teste/', views.teste_pagamento, name='teste_pagamento'),
     path('pagamento/sucesso/', views.pagamento_sucesso, name='pagamento_sucesso'),
     path('pagamento/falha/', views.pagamento_falha, name='pagamento_falha'),
     path('pagamento/pendente/', views.pagamento_pendente, name='pagamento_pendente'),
-
-    # URL para verificar status do pagamento
     path('api/pedido/<int:pedido_id>/status/', views.verificar_status_pagamento, name='verificar_status_pagamento'),
-    
-    # URL para testar Mercado Pago (apenas para admins)
     path('api/test-mercadopago/', views.testar_mercadopago, name='testar_mercadopago'),
-    
     path('api/export-data/', views.export_data_api, name='export_data_api'),
-    
     path('api/exportar-dados/', views.exportar_dados_para_migracao, name='exportar_dados'),
-    
     path('export-manual/', views.export_manual, name='export_manual'),
-
-    # URL temporária para gerar bilhetes em produção (REMOVER DEPOIS)
+    path('admin/test-email/', views.testar_email, name='testar_email'),
     path('admin/gerar-bilhetes/', views.gerar_bilhetes_web, name='gerar_bilhetes_web'),
 ]
