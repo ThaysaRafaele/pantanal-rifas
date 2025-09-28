@@ -1,0 +1,153 @@
+{% extends 'rifa/base.html' %}
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;" data-aos="fade-up">
+  <div class="glass-login w-100" style="max-width: 600px;">
+    <h3 class="mb-4 text-center">
+      <i class="fas fa-user-circle me-2"></i>Meu Perfil
+    </h3>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0 text-warning">
+          <i class="fas fa-info-circle me-2"></i>Dados de Acesso
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-4"><strong>Nome de Usuário:</strong></div>
+          <div class="col-sm-8">{{ user.username }}</div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-4"><strong>Email:</strong></div>
+          <div class="col-sm-8">{{ user.email }}</div>
+        </div>
+        <div class="row mb-0">
+          <div class="col-sm-4"><strong>CPF:</strong></div>
+          <div class="col-sm-8">
+            {% if profile.cpf %}
+              {{ profile.cpf }}
+            {% else %}
+              <span class="text-warning">CPF não cadastrado</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0 text-warning">
+          <i class="fas fa-user me-2"></i>Dados Pessoais
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-sm-4"><strong>Nome Completo:</strong></div>
+          <div class="col-sm-8">{{ user.first_name|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-4"><strong>Nome Social:</strong></div>
+          <div class="col-sm-8">{{ profile.nome_social|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-4"><strong>Data de Nascimento:</strong></div>
+          <div class="col-sm-8">{{ profile.data_nascimento|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-0">
+          <div class="col-sm-4"><strong>Telefone:</strong></div>
+          <div class="col-sm-8">{{ profile.telefone|default:"Não informado" }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if profile.cep or profile.cidade %}
+    <div class="card bg-dark border-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0 text-warning">
+          <i class="fas fa-map-marker-alt me-2"></i>Endereço
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-2">
+          <div class="col-sm-4"><strong>CEP:</strong></div>
+          <div class="col-sm-8">{{ profile.cep|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-sm-4"><strong>Logradouro:</strong></div>
+          <div class="col-sm-8">{{ profile.logradouro|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-sm-4"><strong>Número:</strong></div>
+          <div class="col-sm-8">{{ profile.numero|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-sm-4"><strong>Bairro:</strong></div>
+          <div class="col-sm-8">{{ profile.bairro|default:"Não informado" }}</div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-sm-4"><strong>Cidade/UF:</strong></div>
+          <div class="col-sm-8">{{ profile.cidade|default:"Não informado" }}/{{ profile.uf|default:"--" }}</div>
+        </div>
+        {% if profile.complemento %}
+        <div class="row mb-0">
+          <div class="col-sm-4"><strong>Complemento:</strong></div>
+          <div class="col-sm-8">{{ profile.complemento }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-info">
+      <h6 class="alert-heading">
+        <i class="fas fa-key me-2"></i>Como fazer login:
+      </h6>
+      <h9 class="mb-2">Você pode acessar sua conta usando qualquer uma das opções abaixo:</h9>
+      <ul class="mb-0">
+        <li><strong>Nome de usuário:</strong> {{ user.username }}</li>
+        <li><strong>Email:</strong> {{ user.email }}</li>
+        {% if profile.cpf %}<li><strong>CPF:</strong> {{ profile.cpf }}</li>{% endif %}
+      </ul>
+    </div>
+
+    <div class="d-grid gap-2">
+      <a href="{% url 'password_reset' %}" class="btn btn-warning">
+        <i class="fas fa-lock me-2"></i>Alterar Senha
+      </a>
+      <a href="{% url 'meus_numeros' %}" class="btn btn-success">
+        <i class="fas fa-ticket-alt me-2"></i>Meus Números
+      </a>
+      <a href="{% url 'home' %}" class="btn btn-outline-light">
+        <i class="fas fa-home me-2"></i>Voltar ao Início
+      </a>
+    </div>
+
+    <!-- Debug Info (apenas para admin) -->
+    {% if user.is_superuser %}
+    <div class="mt-4 p-3 bg-danger bg-opacity-25 border border-danger rounded">
+      <h6 class="text-danger">Debug Info (Admin):</h6>
+      <small class="text-muted">
+        <strong>User ID:</strong> {{ user.id }}<br>
+        <strong>Profile existe:</strong> {% if profile %}Sim{% else %}Não{% endif %}<br>
+        {% if profile %}
+        <strong>Profile ID:</strong> {{ profile.id }}<br>
+        <strong>CPF raw:</strong> "{{ profile.cpf }}"<br>
+        <strong>CPF len:</strong> {{ profile.cpf|length }}<br>
+        {% endif %}
+      </small>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

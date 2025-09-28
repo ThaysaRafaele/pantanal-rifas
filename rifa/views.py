@@ -20,6 +20,13 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count, Q
 
+from django.contrib.auth.views import (
+    PasswordResetView, PasswordResetDoneView,
+    PasswordResetConfirmView, PasswordResetCompleteView
+)
+from django.urls import reverse_lazy
+from django.contrib.auth import logout
+
 import mercadopago
 import re
 import json
@@ -51,6 +58,13 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
 
 class CustomPasswordResetCompleteView(PasswordResetCompleteView):
     template_name = 'registration/password_reset_complete.html'
+    
+# ===== LOGOUT VIEW =====
+def logout_view(request):
+    """View personalizada para logout"""
+    logout(request)
+    messages.success(request, 'Você foi desconectado com sucesso!')
+    return redirect('home')
 
 # ===== PÁGINAS PRINCIPAIS =====
 def home(request):
@@ -109,40 +123,75 @@ def raffle_detail(request, raffle_id):
 
 # ===== AUTENTICAÇÃO =====
 def login_view(request):
+    """Login melhorado que aceita username, email ou CPF"""
     if request.method == 'POST':
         post = request.POST.copy()
         raw_user = post.get('username', '').strip()
+        
+        # Normalização do campo de entrada
+        import re
         digits = re.sub(r'\D', '', raw_user)
         
-        # Tenta login por CPF
-        if len(digits) == 11 and User.objects.filter(username=digits).exists():
-            post['username'] = digits
-        else:
-            # Tenta login por email
-            try:
-                user_by_email = User.objects.filter(email__iexact=raw_user).first()
-                if user_by_email:
-                    post['username'] = user_by_email.username
-            except Exception:
-                pass
-
+        # Se parece com CPF (11 dígitos), busca por CPF
+        if len(digits) == 11:
+            cpf_formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+            
+            # Busca no perfil primeiro
+            from .models_profile import UserProfile
+            profile = UserProfile.objects.filter(
+                cpf__in=[digits, cpf_formatted]
+            ).select_related('user').first()
+            
+            # Fallback: busca normalizando todos os CPFs
+            if not profile:
+                for p in UserProfile.objects.select_related('user').all():
+                    p_digits = re.sub(r'\D', '', p.cpf or '')
+                    if p_digits == digits:
+                        profile = p
+                        break
+            
+            if profile:
+                post['username'] = profile.user.username
+            else:
+                # Tenta buscar por username se for 11 dígitos exatos
+                user = User.objects.filter(username=digits).first()
+                if user:
+                    post['username'] = digits
+        
+        # Se parece com email
+        elif '@' in raw_user:
+            user = User.objects.filter(email__iexact=raw_user).first()
+            if user:
+                post['username'] = user.username
+        
+        # Primeira tentativa de autenticação
         form = AuthenticationForm(request, data=post)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
             return redirect('home')
         
-        # Fallback: tenta username case-insensitive
-        try:
-            u = User.objects.filter(username__iexact=raw_user).first()
-            if u:
-                post['username'] = u.username
-                form = AuthenticationForm(request, data=post)
-                if form.is_valid():
-                    login(request, form.get_user())
-                    return redirect('home')
-        except Exception:
-            pass
+        # Fallback: busca case-insensitive por username
+        user = User.objects.filter(username__iexact=raw_user).first()
+        if user:
+            post['username'] = user.username
+            form = AuthenticationForm(request, data=post)
+            if form.is_valid():
+                login(request, form.get_user())
+                return redirect('home')
+        
+        # Fallback: busca por nome_social no perfil
+        from .models_profile import UserProfile
+        profile = UserProfile.objects.filter(
+            nome_social__iexact=raw_user
+        ).select_related('user').first()
+        if profile:
+            post['username'] = profile.user.username
+            form = AuthenticationForm(request, data=post)
+            if form.is_valid():
+                login(request, form.get_user())
+                return redirect('home')
+    
     else:
         form = AuthenticationForm()
     
@@ -502,40 +551,57 @@ def api_rifa_detail(request, rifa_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 def api_usuario_por_cpf(request):
-    cpf_raw = (request.GET.get('cpf') or '').strip()
-    digits = re.sub(r'\D','', cpf_raw)
+    """API para buscar usuário por CPF (GET)"""
+    cpf_raw = request.GET.get('cpf', '').strip()
     
+    import re
+    digits = re.sub(r'\D', '', cpf_raw)
     if len(digits) != 11:
-        return JsonResponse({'found': False, 'message': 'CPF inválido.'}, status=400)
+        return JsonResponse({'found': False, 'message': 'CPF deve ter 11 dígitos'})
     
-    formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+    cpf_formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
     
     try:
-        profile = Perfil.objects.select_related('user').filter(Q(cpf=formatted)|Q(cpf=digits)).first()
+        from .models_profile import UserProfile
+        
+        # Busca por ambos os formatos
+        profile = UserProfile.objects.filter(
+            cpf__in=[digits, cpf_formatted]
+        ).select_related('user').first()
+        
+        # Fallback: normalização
         if not profile:
-            for p in Perfil.objects.select_related('user').all():
-                if re.sub(r'\D','', p.cpf or '') == digits:
+            for p in UserProfile.objects.select_related('user').all():
+                p_digits = re.sub(r'\D', '', p.cpf or '')
+                if p_digits == digits:
                     profile = p
                     break
         
         if not profile:
-            return JsonResponse({'found': False, 'message': 'CPF não cadastrado.'})
+            return JsonResponse({
+                'found': False, 
+                'message': 'Não existe conta cadastrada neste CPF'
+            })
         
         user = profile.user
-        nome = (user.first_name or '').strip() or user.username
-        email = (user.email or '').strip()
-        telefone = (getattr(profile,'telefone','') or '').strip()
+        nome = user.first_name or user.username
+        email = user.email or ''
+        telefone = getattr(profile, 'telefone', '') or ''
         
+        # Mascaramento para privacidade
         def mask_email(e):
-            if not e or '@' not in e: return ''
-            u,d = e.split('@',1)
-            return (u[0] + '*'*(len(u)-1)) + '@' + d if len(u)>1 else '*'+'@'+d
+            if not e or '@' not in e:
+                return ''
+            u, d = e.split('@', 1)
+            return (u[0] + '*' * (len(u) - 1)) + '@' + d if len(u) > 1 else '*@' + d
         
         def mask_phone(p):
-            if not p: return ''
-            digs = re.sub(r'\D','', p)
-            if len(digs) <= 7: return digs
-            return digs[:4] + '*'*(len(digs)-7) + digs[-3:]
+            if not p:
+                return ''
+            digs = re.sub(r'\D', '', p)
+            if len(digs) <= 7:
+                return digs
+            return digs[:2] + '*' * (len(digs) - 5) + digs[-3:]
         
         return JsonResponse({
             'found': True,
@@ -543,46 +609,70 @@ def api_usuario_por_cpf(request):
             'email': mask_email(email),
             'telefone': mask_phone(telefone)
         })
+        
     except Exception:
-        return JsonResponse({'found': False, 'message': 'Erro ao buscar CPF.'}, status=500)
+        return JsonResponse({
+            'found': False, 
+            'message': 'Erro ao buscar CPF'
+        })
 
 @csrf_exempt
-@require_POST
 def verificar_cpf(request):
+    """Verifica se existe usuário com o CPF (POST) - VERSÃO CORRIGIDA"""
     try:
         data = request.POST or json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return HttpResponseBadRequest('Invalid payload')
+        return JsonResponse({'found': False, 'message': 'Dados inválidos'})
 
-    cpf_raw = data.get('cpf')
+    cpf_raw = data.get('cpf', '').strip()
     if not cpf_raw:
-        return HttpResponseBadRequest('cpf required')
+        return JsonResponse({'found': False, 'message': 'CPF obrigatório'})
 
+    import re
     cpf_digits = re.sub(r'\D', '', cpf_raw)
     if len(cpf_digits) != 11:
-        return JsonResponse({'found': False})
+        return JsonResponse({'found': False, 'message': 'CPF deve ter 11 dígitos'})
 
+    # Formatos para busca
     cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
-    profile = Perfil.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).select_related('user').first()
     
-    if not profile:
-        for p in Perfil.objects.all():
-            if re.sub(r'\D', '', p.cpf or '') == cpf_digits:
-                profile = p
-                break
-
-    if not profile:
-        return JsonResponse({'found': False})
-
-    user = profile.user
-    return JsonResponse({
-        'found': True, 
-        'user': {
-            'nome': profile.nome_social or user.get_full_name() or user.username,
-            'email': user.email,
-            'telefone': getattr(profile, 'telefone', '')
-        }
-    })
+    try:
+        from .models_profile import UserProfile
+        
+        # Busca direta por ambos os formatos
+        profile = UserProfile.objects.filter(
+            cpf__in=[cpf_digits, cpf_formatted]
+        ).select_related('user').first()
+        
+        # Fallback: normalização completa
+        if not profile:
+            for p in UserProfile.objects.select_related('user').all():
+                p_digits = re.sub(r'\D', '', p.cpf or '')
+                if p_digits == cpf_digits:
+                    profile = p
+                    break
+        
+        if not profile:
+            return JsonResponse({
+                'found': False, 
+                'message': 'Não existe conta cadastrada com este CPF'
+            })
+        
+        user = profile.user
+        return JsonResponse({
+            'found': True, 
+            'user': {
+                'nome': getattr(profile, 'nome_social', '') or user.get_full_name() or user.username,
+                'email': user.email,
+                'telefone': getattr(profile, 'telefone', '')
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'found': False, 
+            'message': f'Erro interno: {str(e)}'
+        })
 
 # ===== BUSCA DE PEDIDOS =====
 @csrf_exempt
@@ -1638,3 +1728,46 @@ def export_manual(request):
         
     except Exception as e:
         return JsonResponse({'error': str(e)})
+
+# ===== PERFIL =====
+@login_required
+def perfil(request):
+    """Exibe o perfil do usuário logado"""
+    try:
+        profile = request.user.profile
+    except AttributeError:
+        # Cria perfil se não existir
+        from .models_profile import UserProfile
+        profile = UserProfile.objects.create(
+            user=request.user,
+            cpf='',
+            data_nascimento='',
+            telefone='',
+            cep='',
+            logradouro='',
+            numero='',
+            bairro='',
+            uf='',
+            cidade=''
+        )
+    
+    return render(request, 'rifa/perfil.html', {
+        'profile': profile
+    })
+      
+@csrf_exempt 
+def verificar_status_pagamento(request, pedido_id):
+    try:
+        pedido = get_object_or_404(Pedido, id=pedido_id)
+        return JsonResponse({
+            "success": True,
+            "status": pedido.status,
+            "payment_id": getattr(pedido, 'mercado_pago_payment_id', None),
+            "updated": False
+        })
+    except Exception as e:
+        return JsonResponse({
+            "error": "Erro ao verificar status",
+            "details": str(e)
+        }, status=500)
+        

@@ -90,8 +90,17 @@
       <li><a href="{% url 'sorteios' %}">🐊 Sorteios</a></li>
       <li><a href="{% url 'meus_numeros' %}">🍀 Meus números</a></li>
       <li><a href="{% url 'ganhadores' %}">🏆 Ganhadores</a></li>
-      {% if not user.is_authenticated %}
-        <!-- Botões Entrar e Cadastrar juntos -->
+      
+      {% if user.is_authenticated %}
+        <!-- Link do perfil para usuários logados -->
+        <li><a href="{% url 'perfil' %}">👤 Meu Perfil</a></li>
+        <li style="margin-top: 15px;">
+          <a href="{% url 'logout_view' %}" class="btn btn-danger d-flex align-items-center justify-content-center w-100">
+            <i class="fas fa-sign-out-alt me-2"></i> Sair
+          </a>
+        </li>
+      {% else %}
+        <!-- Botões Entrar e Cadastrar para usuários não logados -->
         <li style="margin-top: 15px;">
           <div style="display: flex; gap: 8px; flex-direction: column;">
             <a href="{% url 'login' %}" class="btn btn-primary d-flex align-items-center justify-content-center">
@@ -101,13 +110,6 @@
               <i class="fas fa-user-plus me-2"></i> Cadastrar
             </a>
           </div>
-        </li>
-      {% else %}
-        <li style="margin-top: 15px;">
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger d-flex align-items-center justify-content-center w-100"><i class="fas fa-sign-out-alt me-2"></i> Sair</button>
-          </form>
         </li>
       {% endif %}
     </ul>
@@ -121,7 +123,7 @@
       <h3 class="mb-3 text-center">Login</h3>
       <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
-        <input type="text" name="username" class="form-control mb-2" placeholder="Telefone ou usuário" required>
+        <input type="text" name="username" class="form-control mb-2" placeholder="CPF, email ou usuário" required>
         <input type="password" name="password" class="form-control mb-2" placeholder="Senha" required>
         <div class="mb-2 text-end">
           <a href="{% url 'password_reset' %}" class="small">Esqueci minha senha</a>
@@ -153,7 +155,6 @@
   <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
   <script>
   AOS.init();
-  <!-- Menu e overlay: a lógica de abrir/fechar e overlay é gerida por static/js/main.js para evitar handlers duplicados -->
   </script>
   <script src="{% static 'js/main.js' %}"></script>
   <script src="{% static 'js/payment.js' %}"></script>
