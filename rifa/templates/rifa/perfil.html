@@ -1,0 +1,127 @@
+{% extends 'rifa/base.html' %}
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;" data-aos="fade-up">
+  <div class="glass-login w-100" style="max-width: 600px;">
+    <h3 class="mb-4 text-center">
+      <i class="fas fa-user-circle me-2"></i>Meu Perfil
+    </h3>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Formulário de Edição -->
+    <form method="POST" action="{% url 'perfil' %}">
+      {% csrf_token %}
+      
+      <div class="card bg-dark border-secondary mb-4">
+        <div class="card-header">
+          <h5 class="mb-0 text-warning">
+            <i class="fas fa-info-circle me-2"></i>Dados de Acesso
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>Nome de Usuário:</strong></div>
+            <div class="col-sm-8">
+              <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>Email:</strong></div>
+            <div class="col-sm-8">
+              <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+            </div>
+          </div>
+          <div class="row mb-0">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>CPF:</strong></div>
+            <div class="col-sm-8">
+              <input type="text" class="form-control" value="{{ profile.cpf }}" readonly style="background-color: #2a2a2a;">
+              <small class="text-muted">CPF não pode ser alterado</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-dark border-secondary mb-4">
+        <div class="card-header">
+          <h5 class="mb-0 text-warning">
+            <i class="fas fa-user me-2"></i>Dados Pessoais
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>Nome Completo:</strong></div>
+            <div class="col-sm-8">
+              <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>Nome Social:</strong></div>
+            <div class="col-sm-8">
+              <input type="text" name="nome_social" class="form-control" value="{{ profile.nome_social|default:'' }}">
+            </div>
+          </div>
+          <div class="row mb-0">
+            <div class="col-sm-4" style="color: #22c55e;"><strong>Telefone:</strong></div>
+            <div class="col-sm-8">
+              <input type="text" name="telefone" id="telefone" class="form-control" value="{{ profile.telefone|default:'' }}" placeholder="(99) 99999-9999">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-key me-2"></i>Como fazer login:
+        </h6>
+        <h8 class="mb-2">Você pode acessar sua conta usando qualquer uma das opções abaixo:</h8>
+        <ul class="mb-0">
+          <li><strong>Nome de usuário:</strong> <span id="display-username">{{ user.username }}</span></li>
+          <li><strong>Email:</strong> <span id="display-email">{{ user.email }}</span></li>
+          {% if profile.cpf %}<li><strong>CPF:</strong> {{ profile.cpf }}</li>{% endif %}
+        </ul>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-save me-2"></i>Salvar Alterações
+        </button>
+        <a href="{% url 'password_reset' %}" class="btn btn-warning">
+          <i class="fas fa-lock me-2"></i>Alterar Senha
+        </a>
+        <a href="{% url 'meus_numeros' %}" class="btn btn-info">
+          <i class="fas fa-ticket-alt me-2"></i>Meus Números
+        </a>
+        <a href="{% url 'home' %}" class="btn btn-outline-light">
+          <i class="fas fa-home me-2"></i>Voltar ao Início
+        </a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.8/jquery.inputmask.min.js"></script>
+<script>
+$(document).ready(function(){
+  // Máscara para telefone
+  $('#telefone').inputmask('(99) 99999-9999');
+  
+  // Atualizar preview em tempo real
+  $('input[name="username"]').on('input', function() {
+    $('#display-username').text($(this).val());
+  });
+  
+  $('input[name="email"]').on('input', function() {
+    $('#display-email').text($(this).val());
+  });
+});
+</script>
+{% endblock %}
