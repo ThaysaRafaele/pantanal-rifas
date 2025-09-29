@@ -3,7 +3,7 @@
 
 {% block content %}
 <section class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-  <div class="glass-login w-100" style="max-width: 600px;">
+  <div class="glass-login w-100" style="max-width: 500px;">
     <h2>Cadastro</h2>
     {% if messages %}
       {% for message in messages %}
@@ -23,19 +23,11 @@
         <input type="text" class="form-control" id="username" name="username" required>
       </div>
 
-      <div class="mb-3">
-        <label for="nomeSocial" class="form-label">Nome Social (opcional)</label>
-        <input type="text" class="form-control" id="nomeSocial" name="nomeSocial">
-      </div>
+
 
       <div class="mb-3">
         <label for="cpf" class="form-label">CPF</label>
         <input type="text" class="form-control" id="cpf" name="cpf" required placeholder="000.000.000-00">
-      </div>
-
-      <div class="mb-3">
-        <label for="dataNascimento" class="form-label">Data de nascimento</label>
-        <input type="text" class="form-control" id="dataNascimento" name="dataNascimento" placeholder="dd/mm/aaaa" required>
       </div>
 
       <div class="mb-3">
@@ -51,50 +43,6 @@
       <div class="mb-3">
         <label for="confirmaTelefone" class="form-label">Confirmar Telefone</label>
         <input type="text" class="form-control" id="confirmaTelefone" name="confirmaTelefone" required placeholder="(99) 99999-9999">
-      </div>
-
-      <!-- Campos de endereço -->
-      <div class="mb-3">
-        <label for="cep" class="form-label">CEP</label>
-        <input type="text" class="form-control" id="cep" name="cep" required placeholder="00000-000">
-      </div>
-
-      <div class="row">
-        <div class="col-md-8 mb-3">
-          <label for="logradouro" class="form-label">Logradouro</label>
-          <input type="text" class="form-control" id="logradouro" name="logradouro" required>
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="numero" class="form-label">Número</label>
-          <input type="text" class="form-control" id="numero" name="numero" required>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label for="bairro" class="form-label">Bairro</label>
-          <input type="text" class="form-control" id="bairro" name="bairro" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label for="complemento" class="form-label">Complemento (opcional)</label>
-          <input type="text" class="form-control" id="complemento" name="complemento">
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label for="uf" class="form-label">UF</label>
-          <input type="text" class="form-control" id="uf" name="uf" required maxlength="2" placeholder="MS">
-        </div>
-        <div class="col-md-8 mb-3">
-          <label for="cidade" class="form-label">Cidade</label>
-          <input type="text" class="form-control" id="cidade" name="cidade" required>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label for="referencia" class="form-label">Ponto de referência (opcional)</label>
-        <input type="text" class="form-control" id="referencia" name="referencia">
       </div>
 
       <div class="mb-3">
@@ -117,25 +65,8 @@
 <script>
   $(document).ready(function(){
     $('#cpf').inputmask('999.999.999-99');
-    $('#dataNascimento').inputmask('99/99/9999');
     $('#telefone').inputmask('(99) 99999-9999');
     $('#confirmaTelefone').inputmask('(99) 99999-9999');
-    $('#cep').inputmask('99999-999');
-    
-    // Buscar endereço pelo CEP
-    $('#cep').on('blur', function() {
-      const cep = $(this).val().replace(/\D/g, '');
-      if (cep.length === 8) {
-        $.getJSON(`https://viacep.com.br/ws/${cep}/json/`, function(data) {
-          if (!data.erro) {
-            $('#logradouro').val(data.logradouro);
-            $('#bairro').val(data.bairro);
-            $('#cidade').val(data.localidade);
-            $('#uf').val(data.uf);
-          }
-        });
-      }
-    });
   });
 </script>
 {% endblock %}

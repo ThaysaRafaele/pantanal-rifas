@@ -13,7 +13,9 @@ urlpatterns = [
     path('editar-rifa/<int:rifa_id>/', views.editar_rifa, name='editar_rifa'),
     path('excluir-rifa/<int:rifa_id>/', views.excluir_rifa, name='excluir_rifa'),
     path('sortear-rifa/<int:rifa_id>/', views.sortear_rifa_ajax, name='sortear_rifa_ajax'),
-    path('api/rifa/<int:rifa_id>/', views.api_rifa_detail, name='api_rifa_detail'),
+    path('api/rifa/<int:rifa_id>/', views.api_rifa_detail, name='api_rifa_detail'),    
+    path('api/rifa/<int:rifa_id>/data/', views.api_rifa_data, name='api_rifa_data'),
+    path('api/pedido/<int:pedido_id>/status/', views.verificar_status_pagamento, name='verificar_status_pagamento'),
     
     # Autenticação
     path('login/', views.login_view, name='login'),
@@ -35,8 +37,12 @@ urlpatterns = [
     path('api/criar-pedido/', views.criar_pedido, name='criar_pedido'),
     path('api/verificar-cpf/', views.verificar_cpf, name='verificar_cpf'),
     path('api/gerar-qr/', views.gerar_qr_code, name='gerar_qr'),
+    
+    # URLs de pedido/pagamento
     path('pedido/<int:pedido_id>/pix/', views.pedido_pix, name='pedido_pix'),
+    path('pedido/<int:pedido_id>/pagar/', views.pedido_pix, name='pedido_pagar'), 
     path('pedido/<int:pedido_id>/mostrar-qr/', views.mostrar_qr, name='mostrar_qr'),
+    
     path('webhook/pagamento/', views.pagamento_webhook, name='pagamento_webhook'),
     path('api/rifa/<int:rifa_id>/definir-premio/', views.definir_premio, name='definir_premio'),
     path('api/rifa/<int:rifa_id>/premios/', views.api_premios_rifa, name='api_premios_rifa'),

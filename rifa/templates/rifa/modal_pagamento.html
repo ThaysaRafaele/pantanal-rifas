@@ -401,24 +401,25 @@
 
 <script>
 // Variáveis globais para armazenar dados do pedido
-let currentPedidoId = null;
-let currentQuantidade = 1;
-let currentRifaId = null;
-let currentValorTotal = 0;
-let paymentCheckInterval = null;
+var currentPedidoId = null;
+var currentQuantidade = 1;
+var currentRifaId = null;
+var currentValorTotal = 0;
+var paymentCheckInterval = null;
 
-// Função principal: openPaymentModal corrigida
-function openPaymentModal(valorTotal, quantidade, rifaId) {
-    
+// FUNÇÃO PRINCIPAL - aceita pedidoId opcional
+function openPaymentModal(valorTotal, quantidade, rifaId, pedidoId) {
+  console.log('Abrindo modal - Pedido:', pedidoId || 'novo', 'Rifa:', rifaId, 'Qtd:', quantidade);
+  
   // Validar parâmetros obrigatórios
   if (!rifaId) {
-    console.error('❌ ERRO: rifaId não fornecido');
+    console.error('Erro: rifaId não fornecido');
     alert('Erro: ID da rifa não encontrado. Recarregue a página.');
     return;
   }
   
   if (!quantidade || quantidade < 1) {
-    console.error('❌ ERRO: quantidade inválida');
+    console.error('Erro: quantidade inválida');
     alert('Erro: Quantidade inválida.');
     return;
   }
@@ -427,28 +428,51 @@ function openPaymentModal(valorTotal, quantidade, rifaId) {
   currentRifaId = String(rifaId);
   currentQuantidade = parseInt(quantidade, 10);
   currentValorTotal = parseFloat(valorTotal.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
-  currentPedidoId = null;
   
-  // Salvar nos campos hidden também
-  document.getElementById('hiddenRifaId').value = currentRifaId;
-  document.getElementById('hiddenQuantidade').value = currentQuantidade;
-  document.getElementById('hiddenValorTotal').value = currentValorTotal;
+  // SE PEDIDO JÁ EXISTE (vindo de meus_numeros), pular para etapa de pagamento
+  if (pedidoId) {
+    currentPedidoId = pedidoId;
+    document.getElementById('hiddenPedidoId').value = currentPedidoId;
+    
+    // Atualizar interface
+    document.getElementById('payValorTotal').textContent = valorTotal;
+    document.getElementById('payQuantidade').textContent = currentQuantidade;
+    
+    // Pular direto para etapa 2
+    document.getElementById('stepCpfVerification').style.display = 'none';
+    document.getElementById('stepPaymentProcessing').style.display = 'block';
+    
+    // Gerar QR Code imediatamente
+    gerarQRCode();
+    
+  } else {
+    // Pedido novo - seguir fluxo normal
+    currentPedidoId = null;
+    
+    // Salvar nos campos hidden
+    document.getElementById('hiddenRifaId').value = currentRifaId;
+    document.getElementById('hiddenQuantidade').value = currentQuantidade;
+    document.getElementById('hiddenValorTotal').value = currentValorTotal;
+    
+    // Atualizar interface do modal
+    document.getElementById('payValorTotal').textContent = valorTotal;
+    document.getElementById('payQuantidade').textContent = currentQuantidade;
+    
+    // Reset e mostrar etapa 1
+    resetModal();
+  }
   
-  
-  // Atualizar interface do modal
-  document.getElementById('payValorTotal').textContent = valorTotal;
-  document.getElementById('payQuantidade').textContent = currentQuantidade;
-  
-  // Reset e mostrar modal
-  resetModal();
+  // Mostrar modal
   document.getElementById('paymentBackdrop').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   
-  // Focar no campo CPF
-  setTimeout(() => {
-    const cpfField = document.getElementById('payCpf');
-    if (cpfField) cpfField.focus();
-  }, 100);
+  // Focar no campo CPF se for novo pedido
+  if (!pedidoId) {
+    setTimeout(function() {
+      var cpfField = document.getElementById('payCpf');
+      if (cpfField) cpfField.focus();
+    }, 100);
+  }
 }
 
 // Fechar modal
@@ -464,18 +488,15 @@ function closePaymentModal() {
 
 // Reset completo do modal
 function resetModal() {
-  // Mostrar etapa 1, esconder etapa 2
   document.getElementById('stepCpfVerification').style.display = 'block';
   document.getElementById('stepPaymentProcessing').style.display = 'none';
   
-  // Limpar dados
   document.getElementById('payCpf').value = '';
   document.getElementById('payUserBox').style.display = 'none';
   document.getElementById('payUserNotFound').style.display = 'none';
   document.getElementById('payActions').style.display = 'none';
   document.getElementById('payCpfInvalid').style.display = 'none';
   
-  // Reset QR area
   document.getElementById('qrLoading').style.display = 'block';
   document.getElementById('modalQrImage').style.display = 'none';
   document.getElementById('pixCodeContainer').style.display = 'none';
@@ -486,22 +507,19 @@ function resetModal() {
 function verificarCpf(event) {
   event.preventDefault();
   
-  const cpfRaw = document.getElementById('payCpf').value.trim();
-  const cpf = cpfRaw.replace(/\D/g, '');
+  var cpfRaw = document.getElementById('payCpf').value.trim();
+  var cpf = cpfRaw.replace(/\D/g, '');
   
-  // Reset elementos
   document.getElementById('payUserBox').style.display = 'none';
   document.getElementById('payUserNotFound').style.display = 'none';
   document.getElementById('payActions').style.display = 'none';
   document.getElementById('payCpfInvalid').style.display = 'none';
 
-  // Validar CPF
   if (!isValidCPF(cpf)) {
     document.getElementById('payCpfInvalid').style.display = 'block';
     return false;
   }
 
-  // Verificar CPF no backend
   fetch('/api/verificar-cpf/', {
     method: 'POST',
     headers: { 
@@ -510,57 +528,51 @@ function verificarCpf(event) {
     },
     body: JSON.stringify({ cpf: cpf })
   })
-  .then(r => r.json())
-  .then(data => {
-    
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
     if (data && data.found) {
-      const u = data.user || {};
+      var u = data.user || {};
       document.getElementById('payUserNome').textContent = u.nome || '—';
       document.getElementById('payUserEmail').textContent = u.email || '—';
       document.getElementById('payUserTelefone').textContent = u.telefone || '—';
       
-      // Mostrar dados do usuário e ações
       document.getElementById('payUserBox').style.display = 'block';
       document.getElementById('payActions').style.display = 'block';
       
     } else {
-      console.log('❌ MODAL: CPF não encontrado');
+      console.log('CPF não encontrado');
       document.getElementById('payUserNotFound').style.display = 'block';
     }
   })
-  .catch(err => {
-    console.error('❌ MODAL: Erro verificando CPF', err);
+  .catch(function(err) {
+    console.error('Erro verificando CPF', err);
     document.getElementById('payUserNotFound').style.display = 'block';
   });
 
   return false;
 }
 
-// Processar pagamento com dados corretos
+// Processar pagamento
 function processarPagamento() {
-  
-  // Validar dados obrigatórios
   if (!currentRifaId) {
-    console.error('❌ MODAL: currentRifaId não definido');
+    console.error('currentRifaId não definido');
     alert('Erro: ID da rifa não encontrado. Recarregue a página.');
     return;
   }
   
   if (!currentQuantidade || currentQuantidade < 1) {
-    console.error('❌ MODAL: currentQuantidade inválida');
+    console.error('currentQuantidade inválida');
     alert('Erro: Quantidade inválida.');
     return;
   }
 
-  const cpf = document.getElementById('payCpf').value.replace(/\D/g, '');
-  const btnPagar = document.getElementById('btnPagar');
+  var cpf = document.getElementById('payCpf').value.replace(/\D/g, '');
+  var btnPagar = document.getElementById('btnPagar');
   
-  // Desabilitar botão
   btnPagar.disabled = true;
   btnPagar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
 
-  // Criar pedido com dados corretos
-  const formData = new FormData();
+  var formData = new FormData();
   formData.append('rifa_id', currentRifaId);
   formData.append('cpf', cpf);
   formData.append('quantidade', currentQuantidade);
@@ -572,41 +584,37 @@ function processarPagamento() {
     },
     body: formData
   })
-  .then(response => response.json())
-  .then(data => {
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
     if (data.success) {
       currentPedidoId = data.pedido_id;
       document.getElementById('hiddenPedidoId').value = currentPedidoId;
       
-      // Mostrar prêmios ganhos se houver
       if (data.premios_ganhos && data.premios_ganhos.length > 0) {
-        let premiosMsg = 'Parabéns! Você ganhou prêmios:\n';
-        data.premios_ganhos.forEach(p => {
-          premiosMsg += `🎉 Número ${p.numero}: R$ ${p.valor.toFixed(2)}\n`;
-        });
+        var premiosMsg = 'Parabéns! Você ganhou prêmios:\n';
+        for (var i = 0; i < data.premios_ganhos.length; i++) {
+          var p = data.premios_ganhos[i];
+          premiosMsg += '🎉 Número ' + p.numero + ': R$ ' + p.valor.toFixed(2) + '\n';
+        }
         alert(premiosMsg);
       }
       
-      // Trocar para etapa 2
       document.getElementById('stepCpfVerification').style.display = 'none';
       document.getElementById('stepPaymentProcessing').style.display = 'block';
       
-      // Gerar QR Code
       gerarQRCode();
     } else {
-      console.error('❌ MODAL: Erro ao criar pedido:', data.error);
+      console.error('Erro ao criar pedido:', data.error);
       alert(data.error || 'Erro ao criar pedido');
       
-      // Reativar botão
       btnPagar.disabled = false;
       btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
     }
   })
-  .catch(error => {
-    console.error('❌ MODAL: Erro na requisição criar pedido:', error);
+  .catch(function(error) {
+    console.error('Erro na requisição criar pedido:', error);
     alert('Erro ao processar pagamento');
     
-    // Reativar botão
     btnPagar.disabled = false;
     btnPagar.innerHTML = '<i class="fas fa-credit-card me-2"></i>Gerar PIX para Pagamento';
   });
@@ -614,9 +622,8 @@ function processarPagamento() {
 
 // Gerar QR Code
 function gerarQRCode() {
-  
   if (!currentPedidoId) {
-    console.error('❌ MODAL: currentPedidoId não definido');
+    console.error('currentPedidoId não definido');
     return;
   }
 
@@ -630,35 +637,32 @@ function gerarQRCode() {
       pedido_id: currentPedidoId
     })
   })
-  .then(response => response.json())
-  .then(data => {
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
     document.getElementById('qrLoading').style.display = 'none';
     
     if (data.success) {
-      // Mostrar QR Code
       if (data.qr_code_base64) {
-        const img = document.getElementById('modalQrImg');
-        img.src = `data:image/png;base64,${data.qr_code_base64}`;
+        var img = document.getElementById('modalQrImg');
+        img.src = 'data:image/png;base64,' + data.qr_code_base64;
         document.getElementById('modalQrImage').style.display = 'block';
       }
       
-      // Mostrar código PIX
       if (data.qr_code) {
         document.getElementById('modalQrRaw').textContent = data.qr_code;
         document.getElementById('pixCodeContainer').style.display = 'block';
       }
       
-      // Habilitar verificação automática
       document.getElementById('btnCheckStatus').style.display = 'inline-block';
       startPaymentCheck();
       
     } else {
-      console.error('❌ MODAL: Erro ao gerar QR:', data.error);
+      console.error('Erro ao gerar QR:', data.error);
       alert(data.error || 'Erro ao gerar QR Code');
     }
   })
-  .catch(error => {
-    console.error('❌ MODAL: Erro ao gerar QR:', error);
+  .catch(function(error) {
+    console.error('Erro ao gerar QR:', error);
     document.getElementById('qrLoading').style.display = 'none';
     alert('Erro ao gerar QR Code');
   });
@@ -668,18 +672,18 @@ function gerarQRCode() {
 function checkPaymentStatus() {
   if (!currentPedidoId) return;
 
-  fetch(`/api/pedido/${currentPedidoId}/status/`)
-  .then(response => response.json())
-  .then(data => {
+  fetch('/api/pedido/' + currentPedidoId + '/status/')
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
     if (data.success && data.status === 'pago') {
       alert('Pagamento confirmado! Recarregando página...');
-      setTimeout(() => {
+      setTimeout(function() {
         window.location.reload();
       }, 2000);
     }
   })
-  .catch(error => {
-    console.error('❌ MODAL: Erro ao verificar pagamento:', error);
+  .catch(function(error) {
+    console.error('Erro ao verificar pagamento:', error);
   });
 }
 
@@ -689,25 +693,52 @@ function startPaymentCheck() {
     clearInterval(paymentCheckInterval);
   }
   
-  paymentCheckInterval = setInterval(() => {
+  paymentCheckInterval = setInterval(function() {
     checkPaymentStatus();
-  }, 10000); 
+  }, 10000);
 }
 
 // Copiar código PIX
 function copyPixCode() {
-  const pixCode = document.getElementById('modalQrRaw').textContent;
-  navigator.clipboard.writeText(pixCode).then(() => {
+  var pixCode = document.getElementById('modalQrRaw').textContent;
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(pixCode).then(function() {
+      alert('Código PIX copiado!');
+    }).catch(function(err) {
+      console.error('Erro ao copiar:', err);
+      fallbackCopyTextToClipboard(pixCode);
+    });
+  } else {
+    fallbackCopyTextToClipboard(pixCode);
+  }
+}
+
+// Fallback para copiar texto
+function fallbackCopyTextToClipboard(text) {
+  var textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  textArea.setSelectionRange(0, 99999);
+  
+  try {
+    document.execCommand('copy');
     alert('Código PIX copiado!');
-  }).catch(err => {
+  } catch (err) {
     console.error('Erro ao copiar:', err);
-  });
+    alert('Não foi possível copiar automaticamente. Por favor, copie manualmente.');
+  }
+  
+  document.body.removeChild(textArea);
 }
 
 // Download do QR Code
 function downloadQR() {
-  const img = document.getElementById('modalQrImg');
-  const link = document.createElement('a');
+  var img = document.getElementById('modalQrImg');
+  var link = document.createElement('a');
   link.download = 'qrcode-pix.png';
   link.href = img.src;
   link.click();
@@ -724,21 +755,28 @@ function resetarCpfPagamento() {
   document.getElementById('payCpf').focus();
 }
 
-// Validação de CPF 
+// Validação de CPF
 function isValidCPF(digits) {
   if (!digits || digits.length !== 11) return false;
   if (/^(\d)\1{10}$/.test(digits)) return false;
   
-  const nums = digits.split('').map(d => parseInt(d, 10));
+  var nums = [];
+  for (var i = 0; i < digits.length; i++) {
+    nums.push(parseInt(digits[i], 10));
+  }
 
-  let sum = 0;
-  for (let i = 0; i < 9; i++) sum += nums[i] * (10 - i);
-  let rev = (sum * 10) % 11;
+  var sum = 0;
+  for (var i = 0; i < 9; i++) {
+    sum += nums[i] * (10 - i);
+  }
+  var rev = (sum * 10) % 11;
   if (rev === 10) rev = 0;
   if (rev !== nums[9]) return false;
 
   sum = 0;
-  for (let i = 0; i < 10; i++) sum += nums[i] * (11 - i);
+  for (var i = 0; i < 10; i++) {
+    sum += nums[i] * (11 - i);
+  }
   rev = (sum * 10) % 11;
   if (rev === 10) rev = 0;
   if (rev !== nums[10]) return false;
@@ -748,15 +786,16 @@ function isValidCPF(digits) {
 
 // Obter CSRF Token
 function getCsrfToken() {
-  return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  var cookieValue = document.querySelector('[name=csrfmiddlewaretoken]');
+  return cookieValue ? cookieValue.value : '';
 }
 
 // Máscara para CPF
 document.addEventListener('DOMContentLoaded', function() {
-  const cpfInput = document.getElementById('payCpf');
+  var cpfInput = document.getElementById('payCpf');
   if (cpfInput) {
     cpfInput.addEventListener('input', function(e) {
-      let value = e.target.value.replace(/\D/g, '');
+      var value = e.target.value.replace(/\D/g, '');
       value = value.replace(/(\d{3})(\d)/, '$1.$2');
       value = value.replace(/(\d{3})(\d)/, '$1.$2');
       value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
@@ -766,13 +805,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Eventos de fechar modal
-window.addEventListener('click', e => {
-  const backdrop = document.getElementById('paymentBackdrop');
+window.addEventListener('click', function(e) {
+  var backdrop = document.getElementById('paymentBackdrop');
   if (e.target === backdrop) { 
     closePaymentModal(); 
   }
 });
 
-window.addEventListener('keydown', e => { 
+window.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closePaymentModal(); 
 });

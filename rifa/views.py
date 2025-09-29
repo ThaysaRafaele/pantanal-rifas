@@ -201,24 +201,12 @@ def cadastro(request):
     if request.method == 'POST':
         nome = request.POST['nomeCompleto']
         username = request.POST.get('username', '')
-        social = request.POST.get('nomeSocial', '')
         cpf = request.POST['cpf']
-        data = request.POST['dataNascimento']
         email = request.POST['email']
         telefone = request.POST['telefone']
         confirma_telefone = request.POST['confirmaTelefone']
         senha = request.POST['password1']
         senha2 = request.POST['password2']
-        
-        # Campos de endereço
-        cep = request.POST['cep']
-        logradouro = request.POST['logradouro']
-        numero = request.POST['numero']
-        bairro = request.POST['bairro']
-        complemento = request.POST.get('complemento', '')
-        uf = request.POST['uf']
-        cidade = request.POST['cidade']
-        referencia = request.POST.get('referencia', '')
 
         # Validações
         if senha != senha2:
@@ -260,20 +248,22 @@ def cadastro(request):
                 first_name=nome
             )
             
+            # Criar perfil apenas com campos essenciais
             Perfil.objects.create(
                 user=user, 
                 cpf=cpf_formatted, 
-                nome_social=social, 
-                data_nascimento=data,
+                nome_social='',  # Campo vazio por padrão
                 telefone=telefone,
-                cep=cep,
-                logradouro=logradouro,
-                numero=numero,
-                bairro=bairro,
-                complemento=complemento,
-                uf=uf,
-                cidade=cidade,
-                referencia=referencia
+                # Campos opcionais vazios por enquanto
+                data_nascimento='',
+                cep='',
+                logradouro='',
+                numero='',
+                bairro='',
+                complemento='',
+                uf='',
+                cidade='',
+                referencia=''
             )
 
             login(request, user)
@@ -733,45 +723,101 @@ def buscar_numeros_por_telefone(request):
 
     return JsonResponse({'status': 'error', 'message': 'Método inválido.'})
 
+
 @csrf_exempt
 def buscar_pedidos_cpf(request):
+    """View para buscar pedidos pelo CPF do comprador - VERSÃO FINAL CORRIGIDA"""
     if request.method == 'POST':
         cpf = request.POST.get('cpf', '').strip()
         
         if not cpf:
-            return JsonResponse({'status': 'error', 'message': 'CPF é obrigatório.'})
+            return JsonResponse({
+                'status': 'error',
+                'message': 'CPF é obrigatório.'
+            })
         
         cpf_limpo = re.sub(r'\D', '', cpf)
+        
         if len(cpf_limpo) != 11:
-            return JsonResponse({'status': 'error', 'message': 'CPF deve ter 11 dígitos.'})
+            return JsonResponse({
+                'status': 'error',
+                'message': 'CPF deve ter 11 dígitos.'
+            })
         
         try:
             cpf_formatado = f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
             
+            # Buscar números diretamente - não pedidos
             numeros = Numero.objects.filter(
                 comprador_cpf__in=[cpf_limpo, cpf_formatado],
                 status__in=['reservado', 'pago']
-            ).select_related('rifa')
+            ).select_related('rifa').order_by('-reservado_em')
             
-            if numeros.exists():
-                numeros_data = []
-                for numero in numeros:
-                    numeros_data.append({
-                        'numero': numero.numero,
-                        'rifa_titulo': numero.rifa.titulo if numero.rifa else 'Sem título',
-                        'status': numero.status.title(),
-                        'comprador_nome': numero.comprador_nome or 'Não informado'
-                    })
+            if not numeros.exists():
+                return JsonResponse({
+                    'status': 'not_found',
+                    'message': 'Nenhum número encontrado para o CPF informado.'
+                })
+            
+            numeros_data = []
+            pedidos_processados = set()  # Para evitar duplicatas
+            
+            for numero in numeros:
+                # Buscar pedido relacionado (se existir)
+                pedido = Pedido.objects.filter(
+                    rifa=numero.rifa,
+                    cpf__in=[cpf_limpo, cpf_formatado],
+                    numeros_reservados__contains=str(numero.numero)
+                ).first()
                 
-                return JsonResponse({'status': 'success', 'numeros': numeros_data})
-            else:
-                return JsonResponse({'status': 'not_found', 'message': f'Nenhum número encontrado para o CPF {cpf}.'})
+                # Calcular tempo restante
+                tempo_restante = 0
+                if numero.status == 'reservado' and numero.reservado_em:
+                    tempo_decorrido = (timezone.now() - numero.reservado_em).total_seconds()
+                    tempo_limite = 86400
+                    tempo_restante = max(0, tempo_limite - tempo_decorrido)
+                
+                # Status do NÚMERO (não do pedido)
+                status_display = numero.status.title()  # 'Reservado' ou 'Pago'
+                
+                # Identificador único para agrupar por pedido
+                pedido_key = f"{numero.rifa.id}_{pedido.id if pedido else 'sem_pedido'}"
+                
+                # Dados do número
+                numero_dict = {
+                    'numero': str(numero.numero).zfill(6),
+                    'rifa_titulo': numero.rifa.titulo,
+                    'rifa_id': numero.rifa.id,
+                    'pedido_id': pedido.id if pedido else None,
+                    'status': status_display,
+                    'comprador_nome': numero.comprador_nome or 'Não informado',
+                    'quantidade': pedido.quantidade if pedido else 1,
+                    'valor_total': float(pedido.valor_total) if pedido else float(numero.rifa.preco),
+                    'tempo_restante': int(tempo_restante)
+                }
+                
+                numeros_data.append(numero_dict)
+            
+            return JsonResponse({
+                'status': 'success',
+                'numeros': numeros_data
+            })
                 
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Erro interno do servidor.'})
+            logger.error(f'Erro ao buscar pedidos por CPF {cpf}: {str(e)}')
+            import traceback
+            logger.error(traceback.format_exc())
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Erro ao processar a busca. Tente novamente.'
+            })
     
-    return JsonResponse({'status': 'error', 'message': 'Método inválido.'})
-
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método não permitido.'
+    })
+    
 # ===== PAGAMENTOS E PEDIDOS =====
 @csrf_exempt
 def criar_pedido(request):
@@ -1732,7 +1778,7 @@ def export_manual(request):
 # ===== PERFIL =====
 @login_required
 def perfil(request):
-    """Exibe o perfil do usuário logado"""
+    """Exibe e permite editar o perfil do usuário logado"""
     try:
         profile = request.user.profile
     except AttributeError:
@@ -1741,6 +1787,7 @@ def perfil(request):
         profile = UserProfile.objects.create(
             user=request.user,
             cpf='',
+            nome_social='',
             data_nascimento='',
             telefone='',
             cep='',
@@ -1748,13 +1795,53 @@ def perfil(request):
             numero='',
             bairro='',
             uf='',
-            cidade=''
+            cidade='',
+            complemento='',
+            referencia=''
         )
+    
+    if request.method == 'POST':
+        try:
+            # Dados do User
+            new_username = request.POST.get('username', '').strip()
+            new_email = request.POST.get('email', '').strip()
+            new_first_name = request.POST.get('first_name', '').strip()
+            
+            # Dados do Profile
+            new_nome_social = request.POST.get('nome_social', '').strip()
+            new_telefone = request.POST.get('telefone', '').strip()
+            
+            # Validações de unicidade (excluindo o próprio usuário)
+            if new_username != request.user.username:
+                if User.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                    messages.error(request, "Nome de usuário já está em uso.")
+                    return render(request, 'rifa/perfil.html', {'profile': profile})
+            
+            if new_email != request.user.email:
+                if User.objects.filter(email=new_email).exclude(id=request.user.id).exists():
+                    messages.error(request, "Email já está em uso.")
+                    return render(request, 'rifa/perfil.html', {'profile': profile})
+            
+            # Atualizar User
+            request.user.username = new_username
+            request.user.email = new_email
+            request.user.first_name = new_first_name
+            request.user.save()
+            
+            # Atualizar Profile
+            profile.nome_social = new_nome_social
+            profile.telefone = new_telefone
+            profile.save()
+            
+            messages.success(request, "Perfil atualizado com sucesso!")
+            
+        except Exception as e:
+            messages.error(request, f"Erro ao atualizar perfil: {str(e)}")
     
     return render(request, 'rifa/perfil.html', {
         'profile': profile
-    })
-      
+    })      
+
 @csrf_exempt 
 def verificar_status_pagamento(request, pedido_id):
     try:
@@ -1771,3 +1858,18 @@ def verificar_status_pagamento(request, pedido_id):
             "details": str(e)
         }, status=500)
         
+
+def api_rifa_data(request, rifa_id):
+    """API para retornar dados básicos de uma rifa"""
+    try:
+        rifa = get_object_or_404(Rifa, id=rifa_id)
+        
+        return JsonResponse({
+            'id': rifa.id,
+            'titulo': rifa.titulo,
+            'preco': float(rifa.preco),
+            'encerrada': rifa.encerrada,
+            'quantidade_numeros': rifa.quantidade_numeros
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

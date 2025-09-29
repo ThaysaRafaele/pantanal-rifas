@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 STATUS_CHOICES = [
     ('livre', 'Livre'),
@@ -32,6 +34,7 @@ class NumeroRifa(models.Model):
 
     def __str__(self):
         return f"{self.numero} - {self.rifa.titulo}"
+
 class Numero(models.Model):
     rifa = models.ForeignKey(Rifa, on_delete=models.CASCADE, related_name='numeros', verbose_name='Rifa')
     numero = models.PositiveIntegerField(verbose_name='Número do bilhete')
@@ -40,6 +43,9 @@ class Numero(models.Model):
     comprador_email = models.EmailField(blank=True, verbose_name='E-mail do comprador')
     comprador_telefone = models.CharField(max_length=20, blank=True, verbose_name='Telefone do comprador')
     comprador_cpf = models.CharField(max_length=14, blank=True, verbose_name='CPF do comprador')
+    
+    # Campo para controlar expiração da reserva
+    reservado_em = models.DateTimeField(null=True, blank=True, verbose_name='Data da reserva')
 
     class Meta:
         verbose_name = 'Bilhete'
@@ -48,6 +54,12 @@ class Numero(models.Model):
         unique_together = ('rifa', 'numero')
 
     def save(self, *args, **kwargs):
+        # Definir data de reserva quando status muda para 'reservado'
+        if self.status == 'reservado' and not self.reservado_em:
+            self.reservado_em = timezone.now()
+        elif self.status != 'reservado':
+            self.reservado_em = None
+            
         # Normaliza telefone e CPF antes de salvar
         if self.comprador_telefone:
             self.comprador_telefone = self.comprador_telefone.strip()
@@ -65,7 +77,6 @@ class Numero(models.Model):
             from django.core.exceptions import ValidationError
             raise ValidationError({'comprador_cpf': 'CPF deve conter 11 dígitos.'})
 
-
     def __str__(self):
         return f"Bilhete {self.numero} - {self.rifa.titulo} [{self.status}]"
 
@@ -74,6 +85,52 @@ class Numero(models.Model):
 
     def get_comprador(self):
         return self.comprador_nome or self.comprador_email or self.comprador_telefone or self.comprador_cpf or '---'
+
+    def is_reserva_expirada(self):
+        """Verifica se a reserva expirou (24 horas)"""
+        if self.status != 'reservado' or not self.reservado_em:
+            return False
+        
+        tempo_limite = self.reservado_em + timedelta(hours=24)
+        return timezone.now() > tempo_limite
+    
+    def tempo_restante_reserva(self):
+        """Retorna tempo restante da reserva em segundos (ou None se não aplicável)"""
+        if self.status != 'reservado' or not self.reservado_em:
+            return None
+            
+        tempo_limite = self.reservado_em + timedelta(hours=24)
+        tempo_restante = tempo_limite - timezone.now()
+        
+        if tempo_restante.total_seconds() <= 0:
+            return 0
+        return int(tempo_restante.total_seconds())
+
+    @classmethod
+    def liberar_reservas_expiradas(cls):
+        """Libera automaticamente reservas expiradas"""
+        agora = timezone.now()
+        limite_expiracao = agora - timedelta(hours=24)
+        
+        # Encontrar números reservados há mais de 24 horas
+        numeros_expirados = cls.objects.filter(
+            status='reservado',
+            reservado_em__lt=limite_expiracao
+        )
+        
+        # Liberar números expirados
+        count = numeros_expirados.count()
+        if count > 0:
+            numeros_expirados.update(
+                status='livre',
+                reservado_em=None,
+                comprador_nome='',
+                comprador_email='',
+                comprador_telefone='',
+                comprador_cpf=''
+            )
+        
+        return count
 
     def clean(self):
         from django.core.exceptions import ValidationError
