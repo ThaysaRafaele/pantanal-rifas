@@ -197,79 +197,80 @@ def login_view(request):
     
     return render(request, 'rifa/login.html', {'form': form})
 
+from django.db import transaction
+
 def cadastro(request):
     if request.method == 'POST':
         nome = request.POST['nomeCompleto']
-        username = request.POST.get('username', '')
+        social = request.POST.get('nomeSocial', '')
         cpf = request.POST['cpf']
+        data = request.POST['dataNascimento']
         email = request.POST['email']
-        telefone = request.POST['telefone']
-        confirma_telefone = request.POST['confirmaTelefone']
-        senha = request.POST['password1']
-        senha2 = request.POST['password2']
+        senha = request.POST['senha']
+        senha2 = request.POST['senha2']
 
-        # Validações
         if senha != senha2:
             messages.error(request, "As senhas não coincidem.")
             return redirect('cadastro')
-            
-        if telefone != confirma_telefone:
-            messages.error(request, "Os telefones não coincidem.")
-            return redirect('cadastro')
 
         # Normaliza CPF
+        import re
         cpf_digits = re.sub(r'\D','', cpf)
-        cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits)==11 else cpf
+        if len(cpf_digits) != 11:
+            messages.error(request, "CPF inválido.")
+            return redirect('cadastro')
+            
+        cpf_formatted = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
 
-        # Verifica CPF existente
-        exists_profile = Perfil.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).first()
-        if not exists_profile:
-            for p in Perfil.objects.all():
-                if re.sub(r'\D','', p.cpf or '') == cpf_digits:
-                    exists_profile = p
-                    break
+        # Verifica duplicação de CPF
+        from rifa.models_profile import UserProfile
+        exists_profile = UserProfile.objects.filter(cpf__in=[cpf_formatted, cpf_digits]).first()
         if exists_profile:
             messages.error(request, "CPF já cadastrado.")
             return redirect('cadastro')
 
-        if User.objects.filter(username=username).exists():
-            messages.error(request, "Nome de usuário já existe.")
-            return redirect('cadastro')
-            
-        if User.objects.filter(email=email).exists():
-            messages.error(request, "Email já cadastrado.")
-            return redirect('cadastro')
+        # Username único
+        raw_username = (social or nome.split()[0] if nome else 'user').strip()
+        username_base = re.sub(r"[^A-Za-z0-9@.\+\-_]", '_', raw_username)[:140]
+        username = username_base.lower()
+        suffix = 0
+        while User.objects.filter(username=username).exists():
+            suffix += 1
+            tail = str(suffix)
+            allowed_len = 150 - len(tail)
+            username = (username_base[:allowed_len] + tail).lower()
 
+        # ✅ USAR TRANSACTION PARA GARANTIR ATOMICIDADE
         try:
-            user = User.objects.create_user(
-                username=username, 
-                email=email, 
-                password=senha, 
-                first_name=nome
-            )
-            
-            # Criar perfil apenas com campos essenciais
-            Perfil.objects.create(
-                user=user, 
-                cpf=cpf_formatted, 
-                nome_social='',  # Campo vazio por padrão
-                telefone=telefone,
-                # Campos opcionais vazios por enquanto
-                data_nascimento='',
-                cep='',
-                logradouro='',
-                numero='',
-                bairro='',
-                complemento='',
-                uf='',
-                cidade='',
-                referencia=''
-            )
-
-            login(request, user)
-            messages.success(request, "Cadastro realizado com sucesso!")
-            return redirect('home')
-            
+            with transaction.atomic():
+                # Criar usuário
+                user = User.objects.create_user(
+                    username=username, 
+                    email=email, 
+                    password=senha, 
+                    first_name=nome
+                )
+                
+                # Criar ou atualizar perfil
+                profile, created = UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'cpf': cpf_formatted,
+                        'nome_social': social,
+                        'data_nascimento': data
+                    }
+                )
+                
+                if not created:
+                    profile.cpf = cpf_formatted
+                    profile.nome_social = social
+                    profile.data_nascimento = data
+                    profile.save()
+                
+                login(request, user)
+                messages.success(request, "Cadastro realizado com sucesso!")
+                return redirect('home')
+                
         except Exception as e:
             messages.error(request, f"Erro ao criar cadastro: {str(e)}")
             return redirect('cadastro')
