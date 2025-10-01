@@ -199,7 +199,7 @@ def login_view(request):
 
 def cadastro(request):
     if request.method == 'POST':
-        # Campos do formulário simplificado
+        # Campos do formulário
         nome = request.POST.get('nomeCompleto', '').strip()
         username = request.POST.get('username', '').strip()
         cpf = request.POST.get('cpf', '').strip()
@@ -209,7 +209,7 @@ def cadastro(request):
         senha = request.POST.get('password1', '').strip()
         senha2 = request.POST.get('password2', '').strip()
 
-        # Validações básicas
+        # Validações
         if not all([nome, username, cpf, email, telefone, senha, senha2]):
             messages.error(request, "Preencha todos os campos obrigatórios.")
             return redirect('cadastro')
@@ -245,7 +245,7 @@ def cadastro(request):
             messages.error(request, "CPF já cadastrado.")
             return redirect('cadastro')
 
-        # Criar usuário com transaction
+        # Criar usuário (signal cria perfil automaticamente)
         try:
             with transaction.atomic():
                 user = User.objects.create_user(
@@ -255,13 +255,19 @@ def cadastro(request):
                     first_name=nome
                 )
                 
-                UserProfile.objects.create(
-                    user=user,
-                    cpf=cpf_formatted,
-                    telefone=telefone,
-                    nome_social='',
-                    data_nascimento=''
-                )
+                # Aguarda signal criar perfil, depois atualiza
+                try:
+                    profile = user.profile
+                    profile.cpf = cpf_formatted
+                    profile.telefone = telefone
+                    profile.save()
+                except UserProfile.DoesNotExist:
+                    # Se signal falhar, cria manualmente
+                    UserProfile.objects.create(
+                        user=user,
+                        cpf=cpf_formatted,
+                        telefone=telefone
+                    )
                 
                 login(request, user)
                 messages.success(request, "Cadastro realizado com sucesso!")
