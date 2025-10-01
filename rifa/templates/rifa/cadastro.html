@@ -13,6 +13,7 @@
 
     <form method="POST" action="{% url 'cadastro' %}">
       {% csrf_token %}
+      
       <div class="mb-3">
         <label for="nomeCompleto" class="form-label">Nome completo</label>
         <input type="text" class="form-control" id="nomeCompleto" name="nomeCompleto" required>
@@ -22,8 +23,6 @@
         <label for="username" class="form-label">Usuário</label>
         <input type="text" class="form-control" id="username" name="username" required>
       </div>
-
-
 
       <div class="mb-3">
         <label for="cpf" class="form-label">CPF</label>
@@ -47,12 +46,22 @@
 
       <div class="mb-3">
         <label for="password1" class="form-label">Senha</label>
-        <input type="password" class="form-control" id="password1" name="password1" required>
+        <div class="input-group">
+          <input type="password" class="form-control" id="password1" name="password1" required>
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password1', this)">
+            <i class="fas fa-eye" id="icon-password1"></i>
+          </button>
+        </div>
       </div>
 
       <div class="mb-3">
         <label for="password2" class="form-label">Confirmar Senha</label>
-        <input type="password" class="form-control" id="password2" name="password2" required>
+        <div class="input-group">
+          <input type="password" class="form-control" id="password2" name="password2" required>
+          <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password2', this)">
+            <i class="fas fa-eye" id="icon-password2"></i>
+          </button>
+        </div>
       </div>
 
       <button type="submit" class="btn btn-primary w-100">Cadastrar</button>
@@ -68,5 +77,20 @@
     $('#telefone').inputmask('(99) 99999-9999');
     $('#confirmaTelefone').inputmask('(99) 99999-9999');
   });
+
+  function togglePassword(fieldId, button) {
+    const input = document.getElementById(fieldId);
+    const icon = document.getElementById('icon-' + fieldId);
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
 </script>
 {% endblock %}
