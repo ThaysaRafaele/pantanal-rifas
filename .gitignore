@@ -119,3 +119,12 @@ staticfiles/
 
 # Media files in development (uncomment if needed)
 # media/
+# Banco de dados
+db.sqlite3
+*.sqlite3
+*.pyc
+__pycache__/
+*.py[cod]
+*.class
+*.backup
+*.backup_*
