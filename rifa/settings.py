@@ -7,6 +7,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://pantanaldasortems.com',
+    'https://www.pantanaldasortems.com',
+]
+
 ALLOWED_HOSTS = [
     'localhost', 
     '127.0.0.1',
@@ -14,7 +19,8 @@ ALLOWED_HOSTS = [
     'pantanal.onrender.com',
     'pantanal-rifas.onrender.com',
     'www.pantanaldasortems.com', 
-    'pantanaldasortems.com'
+    'pantanaldasortems.com',
+    '82.29.58.76',
 ]
 
 INSTALLED_APPS = [
