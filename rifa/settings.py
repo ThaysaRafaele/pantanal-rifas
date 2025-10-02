@@ -1,11 +1,13 @@
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 CSRF_TRUSTED_ORIGINS = [
     'https://pantanaldasortems.com',
