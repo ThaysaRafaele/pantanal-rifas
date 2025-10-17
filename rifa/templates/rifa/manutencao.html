@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantanal da Sorte - Temporariamente Suspenso</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .footer-credits{font-size:.95rem;color:#e5e5e5;font-weight:500;margin-bottom:4px;}
+        .dev-name{color:#4dff8c;font-weight:600;text-shadow:0 0 12px rgba(77,255,140,.55);animation:devGlow 2.5s ease-in-out infinite;}
+        
+
+        /* Efeitos de fundo animados - igual ao footer */
+        body::before,
+        body::after {
+            content: "";
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle at center, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0));
+            filter: blur(60px);
+            opacity: 0.6;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        body::before {
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        body::after {
+            bottom: -100px;
+            right: -100px;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            50% {
+                transform: translate(30px, 30px) scale(1.1);
+            }
+        }
+
+        .container {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(255, 215, 0, 0.1);
+            padding: 60px 40px;
+            max-width: 600px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+            }
+            50% {
+                transform: scale(1.1);
+                filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8));
+            }
+        }
+
+        h1 {
+            color: #ffd700;
+            font-size: 32px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-shadow: 
+                0 0 10px rgba(255, 215, 0, 0.5),
+                0 0 20px rgba(255, 215, 0, 0.3);
+            letter-spacing: 1px;
+        }
+
+        .status {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #111;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 
+                0 4px 15px rgba(255, 215, 0, 0.3),
+                0 0 20px rgba(255, 215, 0, 0.2);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% {
+                box-shadow: 
+                    0 4px 15px rgba(255, 215, 0, 0.3),
+                    0 0 20px rgba(255, 215, 0, 0.2);
+            }
+            50% {
+                box-shadow: 
+                    0 6px 20px rgba(255, 215, 0, 0.5),
+                    0 0 30px rgba(255, 215, 0, 0.4);
+            }
+        }
+
+        p {
+            color: #ddd;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            color: #34d058;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(52, 208, 88, 0.5);
+        }
+
+        .contact-info {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 15px;
+            padding: 30px 25px;
+            margin-top: 35px;
+            backdrop-filter: blur(10px);
+        }
+
+        .contact-info h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            font-size: 16px;
+            color: #ccc;
+        }
+
+        .contact-item i {
+            font-size: 1.3rem;
+            color: #34d058;
+            filter: drop-shadow(0 0 8px rgba(52, 208, 88, 0.5));
+        }
+
+        .contact-item a {
+            color: #34d058;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 6px rgba(52, 208, 88, 0.3);
+        }
+
+        .contact-item a:hover {
+            color: #6effa3;
+            text-shadow: 0 0 15px rgba(52, 208, 88, 0.7);
+            transform: translateX(5px);
+        }
+
+        .info-text {
+            margin-top: 25px;
+            font-size: 14px;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        footer {
+            margin-top: 40px;
+            color: #777;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Responsivo */
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 25px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .icon {
+                font-size: 60px;
+            }
+
+            p {
+                font-size: 16px;
+            }
+
+            .contact-item {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .status {
+                font-size: 11px;
+                padding: 10px 20px;
+            }
+        }
+
+        /* Animação de entrada dos elementos */
+        .contact-item {
+            animation: slideIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        .contact-item:nth-child(1) { animation-delay: 0.3s; }
+        .contact-item:nth-child(2) { animation-delay: 0.4s; }
+        .contact-item:nth-child(3) { animation-delay: 0.5s; }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⏸️</div>
+        
+        <h1>Pantanal da Sorte</h1>
+        
+        <span class="status">Temporariamente Suspenso</span>
+        
+        <p>Nossos sorteios estão <span class="highlight">temporariamente suspensos</span> por tempo indeterminado.</p>
+        
+        <p>Estamos trabalhando em melhorias para oferecer uma experiência ainda melhor para você!</p>
+        
+        <div class="contact-info">
+            <h3><i class="fas fa-phone-alt"></i> Informações de Contato</h3>
+            
+            <div class="contact-item">
+                <i class="fab fa-whatsapp"></i>
+                <span>WhatsApp:</span>
+                <a href="https://wa.me/5567996210640" target="_blank">+55 67 99621-0640</a>
+            </div>
+            
+            <div class="contact-item">
+                <i class="fas fa-envelope"></i>
+                <span>Email:</span>
+                <a href="mailto:pantanaldasortems@gmail.com">pantanaldasortems@gmail.com</a>
+            </div>
+            
+            <p class="info-text">
+                Para informações sobre compras anteriores ou reembolsos, entre em contato através dos canais acima.
+            </p>
+        </div>
+        
+        <footer class="footer-credits">
+            &copy; 2025 Pantanal da Sorte - Todos os direitos reservados
+            <div class="footer-credits">Desenvolvido por <span class="dev-name">Thaysa Rafaele</span></div>
+        </footer>
+    </div>
+</body>
+</html>

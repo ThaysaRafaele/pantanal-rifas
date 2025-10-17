@@ -54,4 +54,7 @@ urlpatterns = [
     path('pagamento/falha/', views.pagamento_falha, name='pagamento_falha'),
     path('pagamento/pendente/', views.pagamento_pendente, name='pagamento_pendente'),
     path('admin/test-email/', views.testar_email, name='testar_email'),
+    
+    # URL para exportar dados de reembolso (apenas admin)
+    path('exportar-reembolso/', views.exportar_dados_reembolso, name='exportar_reembolso'),
 ]

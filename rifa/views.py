@@ -1876,3 +1876,130 @@ def api_rifa_data(request, rifa_id):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+import csv
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from decimal import Decimal
+from .models import Numero
+
+@staff_member_required
+def exportar_dados_reembolso(request):
+    """
+    Exporta dados dos compradores com bilhetes pagos
+    URL: /exportar-reembolso/
+    Acesso: Apenas para usuários staff/admin
+    """
+    # Buscar todos os números com status Pago
+    numeros_pagos = Numero.objects.filter(status='Pago').select_related('rifa', 'reservado_por')
+    
+    # Criar resposta CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    response['Content-Disposition'] = 'attachment; filename="compradores_reembolso.csv"'
+    response.write('\ufeff')  # BOM para Excel
+    
+    writer = csv.writer(response)
+    
+    # PARTE 1: Detalhes por bilhete
+    writer.writerow(['===== DETALHES POR BILHETE ====='])
+    writer.writerow([])
+    writer.writerow([
+        'Número', 'Nome', 'Email', 'Telefone/WhatsApp', 'CPF',
+        'Rifa', 'Valor', 'Status'
+    ])
+    
+    compradores = {}
+    
+    for num in numeros_pagos:
+        # Dados do comprador
+        nome = num.comprador_nome or ''
+        email = num.comprador_email or ''
+        telefone = num.comprador_telefone or ''
+        cpf = num.comprador_cpf if hasattr(num, 'comprador_cpf') else ''
+        
+        # Tentar pegar do usuário vinculado
+        if num.reservado_por:
+            user = num.reservado_por
+            if not nome:
+                nome = f"{user.first_name} {user.last_name}".strip() or user.username
+            if not email:
+                email = user.email or ''
+            if not cpf and hasattr(user, 'profile'):
+                try:
+                    cpf = user.profile.cpf or ''
+                except:
+                    pass
+            if not telefone and hasattr(user, 'profile'):
+                try:
+                    telefone = user.profile.telefone or ''
+                except:
+                    pass
+        
+        rifa_nome = num.rifa.titulo if num.rifa else ''
+        valor = num.rifa.preco if num.rifa and hasattr(num.rifa, 'preco') else Decimal('0.00')
+        
+        writer.writerow([
+            num.numero,
+            nome or 'Não informado',
+            email or 'Não informado',
+            telefone or 'Não informado',
+            cpf or 'Não informado',
+            rifa_nome,
+            f"R$ {valor:.2f}",
+            num.status
+        ])
+        
+        # Agrupar por email
+        chave = email.lower() if email else f"sem_email_{num.id}"
+        if chave not in compradores:
+            compradores[chave] = {
+                'nome': nome or 'Não informado',
+                'email': email or 'Não informado',
+                'telefone': telefone or 'Não informado',
+                'cpf': cpf or 'Não informado',
+                'numeros': [],
+                'total': Decimal('0.00'),
+                'rifa': rifa_nome
+            }
+        compradores[chave]['numeros'].append(str(num.numero))
+        compradores[chave]['total'] += valor
+    
+    # PARTE 2: Resumo por comprador
+    writer.writerow([])
+    writer.writerow([])
+    writer.writerow(['===== RESUMO POR COMPRADOR (PARA REEMBOLSO) ====='])
+    writer.writerow([])
+    writer.writerow([
+        'Nome Completo', 'Email', 'Telefone/WhatsApp', 'CPF',
+        'Rifa', 'Qtd Bilhetes', 'Números', 'VALOR TOTAL A REEMBOLSAR'
+    ])
+    
+    for dados in sorted(compradores.values(), key=lambda x: x['total'], reverse=True):
+        numeros_str = ', '.join(sorted(dados['numeros'], key=lambda x: int(x)))
+        writer.writerow([
+            dados['nome'],
+            dados['email'],
+            dados['telefone'],
+            dados['cpf'],
+            dados['rifa'],
+            len(dados['numeros']),
+            numeros_str,
+            f"R$ {dados['total']:.2f}"
+        ])
+    
+    # PARTE 3: Totais
+    total_geral = sum(c['total'] for c in compradores.values())
+    total_bilhetes = sum(len(c['numeros']) for c in compradores.values())
+    
+    writer.writerow([])
+    writer.writerow([])
+    writer.writerow(['===== TOTAIS ====='])
+    writer.writerow(['Total de Compradores:', len(compradores)])
+    writer.writerow(['Total de Bilhetes:', total_bilhetes])
+    writer.writerow(['VALOR TOTAL A REEMBOLSAR:', f"R$ {total_geral:.2f}"])
+    
+    import datetime
+    writer.writerow(['Data da Exportação:', datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')])
+    
+    return response
